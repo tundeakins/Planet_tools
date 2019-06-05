@@ -6,7 +6,7 @@ Created on Tue Nov 27 12:27:41 2018
 """
 import numpy as np
 
-def a_r(P,R,M,format='years'):
+def a_r(P,R,M,format='days'):
     """
     function to convert period to scaled semi-major axis.
     
@@ -30,7 +30,8 @@ def a_r(P,R,M,format='years'):
     AU_factor=1.496e8/(R*695510)
     if format=='days':
         P=P/365.
-    return P**(2/3.)*M**(1/3.)*factor
+        
+    return P**(2/3.)*M**(1/3.)*AU_factor
     
 
 def AU_to_a_r(AU,R):
@@ -253,7 +254,7 @@ def transit_duration(P,Rp,b,a):
     
     return  tdur
     
-def ingress_duration(P,R,M,Rp,format="years"):
+def ingress_duration(P,R,M,Rp,format="days"):
     """
     Function to calculate the duration of ingress/egress.
     
@@ -286,3 +287,32 @@ def ingress_duration(P,R,M,Rp,format="years"):
     ingress_dur= 2* Rp/vel  *365*24*60
     
     return ingress_dur
+    
+    def photo_granulation(M,R,Teff):
+
+       """
+       Estimate the amplitude and timescale of granulation noise in photometric observations
+       as given by Gilliland 2011
+       
+       Parameters
+       ----------
+       
+       M: Mass of the star in Solar masses
+       
+       R: Radius of the star in solar radii
+       
+       Teff: Effective temperature of the star in Kelvin
+       
+       Returns
+       -------
+       
+       amp, tau = Amplitude (in ppm) and timescale (in seconds) of the granulation noise in photometry
+       
+       """
+       M, R, Teff= np.array(M), np.array(R), np.array(Teff)
+       amp = 75 * M**(-0.5) * R * (Teff/5777.)**0.25  
+       
+       tau = 220 * M**(-1.) * R**2 * (Teff/5777.)**0.5
+       
+       return amp, tau
+       
