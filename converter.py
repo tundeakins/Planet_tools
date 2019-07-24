@@ -10,7 +10,7 @@ def a_r(P,R,M,format='days'):
     """
     function to convert period to scaled semi-major axis.
     
-    Parameters
+    Parameters:
     ----------
     P: Period of the planet.
     
@@ -38,7 +38,7 @@ def AU_to_a_r(AU,R):
     """
     function to convert semi-major axis in AU to scaled semi-major axis a/R*.
     
-    Parameters
+    Parameters:
     ----------
     AU: Semi major axis of the planet in AU.
     
@@ -60,7 +60,7 @@ def impact_parameter(inc,a,format='deg'):
     input format of angles as 'deg' or 'rad'
     
     
-    Parameters
+    Parameters:
     ----------
     inc: inclination of the planetary orbit
     
@@ -86,7 +86,7 @@ def inclination(b,a):
     Function to convert impact parameter b to inclination in degrees.
     
         
-    Parameters
+    Parameters:
     ----------
     b: Impact parameter of the transit.
     
@@ -105,7 +105,7 @@ def vsini(prot,st_rad):
     Function to convert stellar rotation period to vsini in km/s.
     
     
-    Parameters
+    Parameters:
     ----------
     prot: Rotation period of star in days.
     
@@ -127,7 +127,7 @@ def prot(vsini,st_rad):
     Function to convert stellar rotation velocity vsini in km/s to rotation period in days.
     
     
-    Parameters
+    Parameters:
     ----------
     vsini: Rotation velocity of star in km/s.
     
@@ -149,7 +149,7 @@ def kipping_ld(u1,u2):
     Re-parameterize quadratic limb darkening parameters $u_{1}$ and $u_{2}$ according to Kipping (2013)
     
     
-    Parameters
+    Parameters:
     ----------
     u1: linear limb darkening coefficient.
     
@@ -170,7 +170,7 @@ def ldtk_ldc(lambda_min,lambda_max,Teff,Teff_unc, logg,logg_unc,z,z_unc):
     """
     Function to estimate quadratic limb darkening coefficients for a given star
     
-    Parameters
+    Parameters:
     ----------
     lambda_min: Start wavelength of the bandpass filter.
     
@@ -222,7 +222,7 @@ def sigma_CCF(res):
     Function to obtain the CCF width of non-rotating star in km/s based on resolution of spectrograph
     
     
-    Parameters
+    Parameters:
     ----------
     res: Resolution of spectrograph
     
@@ -238,7 +238,7 @@ def transit_duration(P,Rp,b,a):
     """
     Function to calculate the transit duration
     
-    Parameters
+    Parameters:
     ----------
     
     P: Period of planet orbit in days
@@ -263,7 +263,7 @@ def ingress_duration(P,R,M,Rp,format="days"):
     """
     Function to calculate the duration of ingress/egress.
     
-    Parameters
+    Parameters:
     ----------
     P: Period of the planet.
     
@@ -299,7 +299,7 @@ def photo_granulation(M,R,Teff):
    Estimate the amplitude and timescale of granulation noise in photometric observations
    as given by Gilliland 2011
    
-   Parameters
+   Parameters:
    ----------
    
    M: Mass of the star in Solar masses
@@ -322,6 +322,26 @@ def photo_granulation(M,R,Teff):
    return amp, tau
    
 def chaplin_exptime(L,Teff,logg):
+    """
+    Function to compute the optimal exposure time to reduce stellar p-mode oscillation amplitude in the given star to 0.1m/s and 0.09m/s according to Chaplin et al. 2019.
+    
+    Parameters:
+    -----------
+    Teff: array_like; size [N]
+        An array of stellar effective temperatures in Kelvin.
+
+    logg: array_like; size [N]
+        An array of log g's in dex.
+
+    L: array_like; size [N]
+        An array of luminosities in units of solar luminosity.
+
+    Returns
+    -------
+    result: numpy array size [N, 2]
+        A 2D array containing tp1 and tpE for each star. tp1 and tpE are exposure times to reach residual amplitudes of 0.1m/s and 0.09m/s to detect earth induced RV. 
+
+    """
     from chaplinfilter import filter
     f = filter(verbose=True)
     results = f(Teff, logg, L)
@@ -331,7 +351,7 @@ def rv_precision_degrade(vsini,spec_type):
     """Function to calculate factor by which RV precision of a stellar spectral type degrades due to vsini.
     It compares RV precision at vsini=0km/s to that at *vsini*  in argument of function. It interpolates using quality factor degradation from Table 2 of Bouchy et al.(2001) 
     
-    Parameters
+    Parameters:
     ----------
     vsini: vsini of the star
     
