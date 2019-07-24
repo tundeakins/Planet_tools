@@ -92,6 +92,11 @@ def inclination(b,a):
     
     a: Scaled semi-major axis i.e. a/R*
     
+    Returns
+    --------
+    
+    inc: The inclination of the planet orbit in degrees.
+    
     """
     return round(np.rad2deg(np.arccos(float(b)/a)),2)
     
@@ -288,31 +293,88 @@ def ingress_duration(P,R,M,Rp,format="days"):
     
     return ingress_dur
     
-    def photo_granulation(M,R,Teff):
+def photo_granulation(M,R,Teff):
 
-       """
-       Estimate the amplitude and timescale of granulation noise in photometric observations
-       as given by Gilliland 2011
-       
-       Parameters
-       ----------
-       
-       M: Mass of the star in Solar masses
-       
-       R: Radius of the star in solar radii
-       
-       Teff: Effective temperature of the star in Kelvin
-       
-       Returns
-       -------
-       
-       amp, tau = Amplitude (in ppm) and timescale (in seconds) of the granulation noise in photometry
-       
-       """
-       M, R, Teff= np.array(M), np.array(R), np.array(Teff)
-       amp = 75 * M**(-0.5) * R * (Teff/5777.)**0.25  
-       
-       tau = 220 * M**(-1.) * R**2 * (Teff/5777.)**0.5
-       
-       return amp, tau
-       
+   """
+   Estimate the amplitude and timescale of granulation noise in photometric observations
+   as given by Gilliland 2011
+   
+   Parameters
+   ----------
+   
+   M: Mass of the star in Solar masses
+   
+   R: Radius of the star in solar radii
+   
+   Teff: Effective temperature of the star in Kelvin
+   
+   Returns
+   -------
+   
+   amp, tau = Amplitude (in ppm) and timescale (in seconds) of the granulation noise in photometry
+   
+   """
+   M, R, Teff= np.array(M), np.array(R), np.array(Teff)
+   amp = 75 * M**(-0.5) * R * (Teff/5777.)**0.25  
+   
+   tau = 220 * M**(-1.) * R**2 * (Teff/5777.)**0.5
+   
+   return amp, tau
+   
+def chaplin_exptime(L,Teff,logg):
+    from chaplinfilter import filter
+    f = filter(verbose=True)
+    results = f(Teff, logg, L)
+    return results
+    
+def rv_precision_degrade(vsini,spec_type):
+    """Function to calculate factor by which RV precision of a stellar spectral type degrades due to vsini.
+    It compares RV precision at vsini=0km/s to that at *vsini*  in argument of function. It interpolates using quality factor degradation from Table 2 of Bouchy et al.(2001) 
+    
+    Parameters
+    ----------
+    vsini: vsini of the star
+    
+    spec_type: Spectral type of the star. Options: K7V, K5V, K2V, G8V, F9V, F5V, F2V
+    
+    Returns
+    --------
+    Factor by which to multiply the RV precision of the star to get its precision at vsini in argument.
+    
+    Examples
+    --------
+    
+    For a K2V star whose theoretical RV precision is calculated to be 0.2m/s. This function can be used to estimate the the RV precision at 5km/s.
+    
+    ::
+    
+        rv_prec = 0.2
+        vsini = 5
+        factor=rv_precision_degrade(vsini,K2V)
+    
+        rv_prec_at_5kms= rv_prec*factor
+    
+    
+    """ 
+    import scipy.interpolate as inter    
+    
+    #table 2 of bouchy et al. (2001)    
+    VSINI = [0.,4.,8.,12.,16.,20.]
+    K7V = [31150.,15605.,8015.,5185.,3785.,2975.]
+    K5V = [34940.,17080.,8440.,5380.,3885.,3020.]
+    K2V = [33445.,16140.,7815.,4930.,3545.,2740.]
+    G8V = [30415.,14700.,7020.,4385.,3140.,2410.]
+    F9V = [24450.,12685.,6105.,3785.,2690.,2045.]
+    F5V = [19245.,10670.,5240.,3230.,2270.,1715.]
+    F2V = [14430.,9000.,4750.,2925.,2045.,1530.]
+    
+    int_fxn = inter.InterpolatedUnivariateSpline(VSINI,spec_type)
+    factor = spec_type[0]/int_fxn(vsini)
+    return factor
+    
+    
+   
+   
+
+
+
