@@ -349,7 +349,7 @@ def chaplin_exptime(L,Teff,logg):
     
 def rv_precision_degrade(vsini,spec_type):
     """Function to calculate factor by which RV precision of a stellar spectral type degrades due to vsini.
-    It compares RV precision at vsini=0km/s to that at *vsini*  in argument of function. It interpolates using quality factor degradation from Table 2 of Bouchy et al.(2001) 
+    It compares RV precision at vsini=0km/s to that at *vsini*  in argument of function. It interpolates using quality factor degradation from Table 2 of Bouchy et al.(2001). It fits a 1-D interpolating spline through all the provided data points. 
     
     Parameters:
     ----------
@@ -388,13 +388,133 @@ def rv_precision_degrade(vsini,spec_type):
     F5V = [19245.,10670.,5240.,3230.,2270.,1715.]
     F2V = [14430.,9000.,4750.,2925.,2045.,1530.]
     
-    int_fxn = inter.InterpolatedUnivariateSpline(VSINI,spec_type)
+    int_fxn = inter.InterpolatedUnivariateSpline(VSINI,spec_type,k=1)   #
     factor = spec_type[0]/int_fxn(vsini)
     return factor
     
     
-   
-   
+def a_r_to_rho_star(P,a_r):
+    """
+    Compute the transit derived stellar density from the planet period and 
+    scaled semi major axis
+    
+    
+    Parameters:
+    -----------
+    
+    P: array-like;
+        The planet period in days
+    
+    a_r: array-like;
+        The scaled semi-major axis of the planet orbit
+        
+    Returns:
+    --------
+    
+    rho: array-like;
+        The stellar density in cgs units
+        
+    """
+    import astropy.constants as c
+    import astropy.units as u
+    
+    st_rho=(3*np.pi/(c.G*(P*u.day)**2)*a_r**3).cgs
+    return st_rho
+    
+def rho_to_a_r(rho,P):
+    """
+    convert stellar density to semi-major axis of planet with a particular period
+    
+    Parameters:
+    -----------
+    
+    rho: array-like;
+        The density of the star in g/cm^3.
+        
+    P: array-like;
+        The period of the planet in days.
+        
+    Returns:
+    --------
+    
+    a_r: array-like;
+        The scaled semi-major axis of the planet.
+    """
+    
+    import astropy.constants as c
+    import astropy.units as u
+    
+    a_r=(((rho*u.g/u.cm**3*(c.G*(P*u.day)**2))/(3*np.pi)).cgs)**(1/3.)
+    return a_r.value
+    
 
+def T_eq(T_st,a_r):
+    """
+    calculate equilibrium temperature of planet in Kelvin
+    
+    Parameters
+    ----------
+    
+    T_st: Array-like;
+        Effective Temperature of the star
+        
+    a_r: Array-like;
+        Scaled semi-major axis of the planet orbit
+        
+    Returns
+    -------
+    
+    T_eq: Array-like;
+        Equilibrium temperature of the planet
+    """
+    return T_st*np.sqrt(0.5/a_r)
 
-
+def R_roche(rho_pl, rho_sat):
+    """
+    Compute roche radius of a planet as a function of the planet's radius
+    
+    Parameters:
+    ----------
+    rho_pl: Array-like;
+        density of the planet
+        
+    rho_sat: Array-like;
+        density of the satellite
+          
+    Returns
+    -------
+    
+    R_roche: Array-like;
+        Roche radius of the planet
+    """    
+    
+    return  2.44*((1.0*rho_pl)/rho_sat)**(1/3.)
+    
+    
+def R_hill(mp, m_st, a_r,rp):
+    """
+    compute the hill radius of a planet
+    
+    Parameters:
+    ----------
+    
+    mp: array-like;
+        mass of the planet in same unit as m_st
+        
+    m_st: array-like;
+        mass of the star
+        
+    a_r: array-like;
+        scaled semi-major axis
+    
+    rp: array_like;
+        ratio of planetary radius to stellar radius
+        
+    Returns
+    --------
+    
+    R-hill: array-like;
+        radius of hill sphere in unit of planetary radius
+    
+    """
+    return ( mp/(3*m_st) )**(1/3.) * a_r/rp
