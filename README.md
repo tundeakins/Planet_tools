@@ -29,8 +29,8 @@ The **calculate_params** module contains the follwing functions:
 The **estimate_effect** module contains the following functions:
 
  - **photo_granulation** - Estimate the amplitude and timescale of granulation noise in photometric observations as given by Gilliland 2011
- - **chaplin_exptime** - compute the optimal exposure time to reduce stellar p-mode oscillation amplitude in the given star to 0.1m/s and 0.09m/s according to Chaplin et al. 2019.
- - **rv_precision_degrade** - calculate factor by which RV precision of a stellar spectral type degrades due to vsini.
+ - **chaplin_exptime** - Compute the optimal exposure time to reduce stellar p-mode oscillation amplitude in the given star to 0.1m/s and 0.09m/s according to Chaplin et al. 2019.
+ - **rv_precision_degrade** - Calculate factor by which RV precision of a stellar spectral type degrades due to vsini.
  
 The **some_stats** module contains the following functions:
 
