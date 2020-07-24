@@ -1,5 +1,5 @@
 # Planet Tools
-Useful functions to perform everyday conversions and calculation of quantities in exoplanetary science. Its a work in progress, so I  am constantly adding and modifying them
+Useful functions to perform everyday conversions and calculation of quantities in exoplanetary science. It is a work in progress, so I  am constantly adding and modifying them
 
 The **convert_params** module contains the following functions:
 
