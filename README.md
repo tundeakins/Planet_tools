@@ -3,14 +3,14 @@ Useful functions to perform everyday conversions and calculation of quantities i
 
 The **convert_params** module contains the following functions:
 
- - **a_r** - convert period to scaled semi-major axis.
- - **a_r_to_rho_star** - Compute transit derived stellar density from the planet period and scaled semi major axis
+ - **P_to_aR** - convert period to scaled semi-major axis.
+ - **aR_to_rho_star** - Compute transit derived stellar density from the planet period and scaled semi major axis
  - **impact_parameter** - Convert inclination to impact parameter b
  
  - **inclination** - Convert impact parameter b to inclination in degrees.
  - **kipping_ld** - Re-parameterize quadratic limb darkening parameters $u_{1}$ and $u_{2}$ according to Kipping (2013)
  - **prot** - Convert stellar rotation velocity vsini in km/s to rotation period in days.
- - **rho_to_a_r** - Convert stellar density to semi-major axis of planet with a particular period
+ - **rho_to_aR** - Convert stellar density to semi-major axis of planet with a particular period
  - **vsini** - Convert stellar rotation period to vsini in km/s.
  
 The **calculate_params** module contains the follwing functions:

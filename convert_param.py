@@ -1,6 +1,6 @@
 
 
-def a_r(P,R,M,format='days'):
+def P_to_aR(P,R,M,format='days'):
     """
     function to convert period to scaled semi-major axis.
     
@@ -18,7 +18,7 @@ def a_r(P,R,M,format='days'):
     
     Returns
     -------
-    a_r: Scaled semi-major axis.
+    aR: Scaled semi-major axis.
     
     """
     AU_factor=1.496e8/(R*695510)
@@ -28,7 +28,7 @@ def a_r(P,R,M,format='days'):
     return P**(2/3.)*M**(1/3.)*AU_factor
     
 
-def AU_to_a_r(AU,R):
+def AU_to_aR(AU,R):
     """
     function to convert semi-major axis in AU to scaled semi-major axis a/R*.
     
@@ -41,7 +41,7 @@ def AU_to_a_r(AU,R):
     
     Returns
     -------
-    a_r: Scaled semi-major axis.
+    aR: Scaled semi-major axis.
     
     """
     return AU*1.496e8/(R*695510)
@@ -163,7 +163,7 @@ def kipping_ld(u1,u2):
     return round(q1,4), round(q2,4)
 				
     
-def a_r_to_rho_star(P,a_r):
+def aR_to_rho_star(P,aR):
     """
     Compute the transit derived stellar density from the planet period and 
     scaled semi major axis
@@ -175,7 +175,7 @@ def a_r_to_rho_star(P,a_r):
     P: array-like;
         The planet period in days
     
-    a_r: array-like;
+    aR: array-like;
         The scaled semi-major axis of the planet orbit
         
     Returns:
@@ -188,10 +188,10 @@ def a_r_to_rho_star(P,a_r):
     import astropy.constants as c
     import astropy.units as u
     
-    st_rho=(3*np.pi/(c.G*(P*u.day)**2)*a_r**3).cgs
+    st_rho=(3*np.pi/(c.G*(P*u.day)**2)*aR**3).cgs
     return st_rho
     
-def rho_to_a_r(rho,P):
+def rho_to_aR(rho,P):
     """
     convert stellar density to semi-major axis of planet with a particular period
     
@@ -207,13 +207,13 @@ def rho_to_a_r(rho,P):
     Returns:
     --------
     
-    a_r: array-like;
+    aR: array-like;
         The scaled semi-major axis of the planet.
     """
     
     import astropy.constants as c
     import astropy.units as u
     
-    a_r=(((rho*u.g/u.cm**3*(c.G*(P*u.day)**2))/(3*np.pi)).cgs)**(1/3.)
-    return a_r.value
+    aR=(((rho*u.g/u.cm**3*(c.G*(P*u.day)**2))/(3*np.pi)).cgs)**(1/3.)
+    return aR.value
     
