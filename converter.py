@@ -361,18 +361,18 @@ def chaplin_exptime(L,Teff,logg):
     
     Parameters:
     -----------
-    Teff: array_like; size [N]
+    Teff : array_like; size [N]
         An array of stellar effective temperatures in Kelvin.
 
-    logg: array_like; size [N]
+    logg : array_like; size [N]
         An array of log g's in dex.
 
-    L: array_like; size [N]
+    L : array_like; size [N]
         An array of luminosities in units of solar luminosity.
 
     Returns
     -------
-    result: numpy array size [N, 2]
+    result : numpy array size [N, 2]
         A 2D array containing tp1 and tpE for each star. tp1 and tpE are exposure times to reach residual amplitudes of 0.1m/s and 0.09m/s to detect earth induced RV. 
 
     """
