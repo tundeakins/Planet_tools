@@ -3,7 +3,7 @@ Useful functions to perform everyday conversions and calculation of quantities i
 
 *The **convert_params** module contains the following functions:
 
- - **a_r** - convert period to scaled semi-major axis.
+ -- **a_r** - convert period to scaled semi-major axis.
  - **a_r_to_rho_star** - Compute transit derived stellar density from the planet period and scaled semi major axis
  - **impact_parameter** - convert inclination to impact parameter b
  
