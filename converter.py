@@ -3,6 +3,12 @@
 Created on Tue Nov 27 12:27:41 2018
 
 @author: tunde
+
+Library of functions useful for converting parameters in exoplanet research
+
+TO import from any directory use
+>>> import sys; sys.path.append( "/home/tunde/mygit/Planet_parameter_conversions")
+
 """
 import numpy as np
 
@@ -54,11 +60,11 @@ def AU_to_a_r(AU,R):
 
     
 
-def impact_parameter(inc,a,format='deg'):
+def impact_parameter(inc,a,format='deg',e=0,w=90):
     """
     Function to convert inclination to impact parameter b.
-    input format of angles as 'deg' or 'rad'
-    
+    input format of angles as 'deg' or 'rad'.
+    see eq. 1.19 in https://www.astro.ex.ac.uk/people/alapini/Publications/PhD_chap1.pdf 
     
     Parameters:
     ----------
@@ -75,13 +81,13 @@ def impact_parameter(inc,a,format='deg'):
     """
     import numpy as np
 
-#    ecc_factor=(1-e**2)/(1+e*np.sin(np.deg2rad(w)))
+    ecc_factor=(1-e**2)/(1+e*np.sin(np.deg2rad(w)))  
     if format == 'deg':
         inc = np.radians(inc)
 
-    return a*np.cos(inc)
+    return a*np.cos(inc)*ecc_factor
 
-def inclination(b,a):
+def inclination(b,a,e=0,w=90):
     """
     Function to convert impact parameter b to inclination in degrees.
     
@@ -98,7 +104,9 @@ def inclination(b,a):
     inc: The inclination of the planet orbit in degrees.
     
     """
-    return round(np.rad2deg(np.arccos(float(b)/a)),2)
+    ecc_factor=(1-e**2)/(1+e*np.sin(np.deg2rad(w)))  
+    inc = np.rad2deg(np.arccos( float(b) / (a*ecc_factor)) )
+    return round(inc, 2)
     
 def vsini(prot,st_rad):
     """
@@ -165,6 +173,32 @@ def kipping_ld(u1,u2):
     q2= u1/(2*(u1+u2))
     
     return round(q1,4), round(q2,4)
+				
+def planet_prot(f,req,mp,j2):
+    """
+	Function to calculate period of rotation of a planet
+	
+	Parameters
+	-----------
+	
+	f : float;
+		planet oblateness
+	req : float;
+		Equatorial radius of planet in jupiter radii.
+	mp : float;
+		mass of planet in jupiter masses
+	j2 : float;
+		quadrupole moment of the planet
+		
+    """
+	
+    import astropy.constants as c
+    import astropy.units as u
+    radius=req*c.R_jup
+    mass= mp*c.M_jup
+    prot=2*np.pi*np.sqrt(radius**3 / (c.G*mass*(2*f-3*j2)))
+	
+    return prot.to(u.hr).value
     
 def ldtk_ldc(lambda_min,lambda_max,Teff,Teff_unc, logg,logg_unc,z,z_unc):
     """
@@ -355,7 +389,7 @@ def rv_precision_degrade(vsini,spec_type):
     ----------
     vsini: vsini of the star
     
-    spec_type: Spectral type of the star. Options: K7V, K5V, K2V, G8V, F9V, F5V, F2V
+    spec_type: Spectral type of the star. Options: "K7V", "K5V", "K2V", "G8V", "F9V", "F5V", "F2V"
     
     Returns
     --------
@@ -380,16 +414,17 @@ def rv_precision_degrade(vsini,spec_type):
     
     #table 2 of bouchy et al. (2001)    
     VSINI = [0.,4.,8.,12.,16.,20.]
-    K7V = [31150.,15605.,8015.,5185.,3785.,2975.]
-    K5V = [34940.,17080.,8440.,5380.,3885.,3020.]
-    K2V = [33445.,16140.,7815.,4930.,3545.,2740.]
-    G8V = [30415.,14700.,7020.,4385.,3140.,2410.]
-    F9V = [24450.,12685.,6105.,3785.,2690.,2045.]
-    F5V = [19245.,10670.,5240.,3230.,2270.,1715.]
-    F2V = [14430.,9000.,4750.,2925.,2045.,1530.]
     
-    int_fxn = inter.InterpolatedUnivariateSpline(VSINI,spec_type,k=1)   #
-    factor = spec_type[0]/int_fxn(vsini)
+    stars = {'F2V': [14430.0, 9000.0, 4750.0, 2925.0, 2045.0, 1530.0],
+             'F5V': [19245.0, 10670.0, 5240.0, 3230.0, 2270.0, 1715.0],
+             'F9V': [24450.0, 12685.0, 6105.0, 3785.0, 2690.0, 2045.0],
+             'G8V': [30415.0, 14700.0, 7020.0, 4385.0, 3140.0, 2410.0],
+             'K2V': [33445.0, 16140.0, 7815.0, 4930.0, 3545.0, 2740.0],
+             'K5V': [34940.0, 17080.0, 8440.0, 5380.0, 3885.0, 3020.0],
+             'K7V': [31150.0, 15605.0, 8015.0, 5185.0, 3785.0, 2975.0]}    
+    
+    int_fxn = inter.InterpolatedUnivariateSpline(VSINI,stars[spec_type],k=1)   #
+    factor = stars[spec_type][0]/int_fxn(vsini)
     return factor
     
     
@@ -467,6 +502,7 @@ def T_eq(T_st,a_r):
     T_eq: Array-like;
         Equilibrium temperature of the planet
     """
+    print("T_st is {0:.2f}, a_r is {1:.2f}".format(T_st,a_r))
     return T_st*np.sqrt(0.5/a_r)
 
 def R_roche(rho_pl, rho_sat):
@@ -518,3 +554,65 @@ def R_hill(mp, m_st, a_r,rp):
     
     """
     return ( mp/(3*m_st) )**(1/3.) * a_r/rp
+    
+def RL_Rroche(j2,mp_ms,a_r,rp_rj,rho_r):
+    return 0.75*(j2/0.01)**(1/5.)*(mp_ms/0.001)**(-2/15.)*(rp_rj)**(2/5.)*(a_r/21.5)**(3/5.)*(rho_r/3)**(1/3.)    
+    
+
+def phase_fold(time, t0, P):
+    """
+    Given the observation time and period, return the phase of each observation time
+    
+    Parameters:
+    ----------
+    
+    time: array-like;
+        time of observation
+
+    t0: array-like;
+        reference time
+        
+    P: float;
+        Period to use in folding in same unit as t
+        
+    Returns
+    --------
+    phases: aaray-like;
+        phases of the observation    
+    
+    """
+    
+    
+    return ( (time-t0) % P) / float(P)
+    
+
+def Merge_Pdfs(input_filelist, output_filename):
+	"""
+	Function to merge pdf documents into a single pdf with different pages
+	
+	Parameters:
+	-----------
+	
+	input_filelist : list of strings;
+		list of path to pdf files with extensions
+		
+	output_filename : string;
+		path of output file to be created with pdf extension
+	
+	"""
+	from PyPDF2 import PdfFileReader, PdfFileWriter
+	output = PdfFileWriter()
+	for pdf_file in input_filelist:
+		pdf_doc = PdfFileReader(open(pdf_file, "rb"))
+		[output.addPage(pdf_doc.getPage(i) ) for i in range(pdf_doc.numPages)]
+	outputStream = open(output_filename,"wb")
+	output.write(outputStream)
+	outputStream.close()
+	
+	
+
+
+
+if __name__ == "__main__":    #used to make files usable as a script. so when called from cmd line only codes in this function are excuted. the codes usually calls to the functions above. e.g 
+    import sys
+    T_eq(np.float(sys.argv[1]), np.float(sys.argv[2]))
