@@ -1,7 +1,7 @@
 # Planet Tools
 Useful functions to perform everyday conversions and calculation of quantities in exoplanetary science. It is a work in progress, so I  am constantly adding and modifying them.
 
-<img src="https://github.com/tundeakins/Planet_tools/blob/master/planet_tools.png" width="200">
+<img src="https://github.com/tundeakins/Planet_tools/blob/master/planet_tools.png" width="300">
 
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/tundeakins/Planet_tools/blob/master/LICENSE)
 
