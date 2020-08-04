@@ -12,7 +12,7 @@ setuptools.setup(
     description="Package with useful functions for exoplanetary research",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
-    url="https://github.com/tunde_akins/Planet_tools",
+    url="https://github.com/tundeakins/Planet_tools",
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python",
