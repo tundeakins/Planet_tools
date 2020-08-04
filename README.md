@@ -1,5 +1,13 @@
 # Planet Tools
-Useful functions to perform everyday conversions and calculation of quantities in exoplanetary science. It is a work in progress, so I  am constantly adding and modifying them
+Useful functions to perform everyday conversions and calculation of quantities in exoplanetary science. It is a work in progress, so I  am constantly adding and modifying them.
+
+To install
+
+```bash
+git clone https://github.com/tundeakins/Planet_tools.git
+cd Planet_tools
+python setup.py install
+```
 
 The **convert_params** module contains the following functions:
 
