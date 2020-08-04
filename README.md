@@ -6,6 +6,10 @@ Useful functions to perform everyday conversions and calculation of quantities i
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/tundeakins/Planet_tools/blob/master/LICENSE)
 
 To install
+```bash
+pip install Planet-tools
+```
+or
 
 ```bash
 git clone https://github.com/tundeakins/Planet_tools.git
