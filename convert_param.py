@@ -142,7 +142,7 @@ def prot(vsini,st_rad):
     
 def kipping_ld(u1,u2):
     """
-    Re-parameterize quadratic limb darkening parameters $u_{1}$ and $u_{2}$ according to Kipping (2013)
+    Re-parameterize quadratic limb darkening parameters $u_{1}$ and $u_{2}$ according to Kipping (2013) https://ui.adsabs.harvard.edu/abs/2013MNRAS.435.2152K/abstract
     
     
     Parameters:
@@ -161,6 +161,27 @@ def kipping_ld(u1,u2):
     q2= u1/(2*(u1+u2))
     
     return round(q1,4), round(q2,4)
+				
+def kipping_to_quadLC(q1,q2):
+    """
+    Re-parameterize kipping 2013 ldcs $q_{1}$ and $q_{2}$ to the usual quadratic limb darkening parameters $u_{1}$ and $u_{2}$. according to Kipping (2013) https://ui.adsabs.harvard.edu/abs/2013MNRAS.435.2152K/abstract
+    
+    
+    Parameters:
+    ----------
+    q1: linear limb darkening coefficient.
+    
+    q2: quadratic limb darkening coefficient.
+    
+    Returns
+    --------
+    u1, u2 : Tuple containing the quadratic limb darkening coefficients
+    
+    """
+    
+    u1 = 2 * np.sqrt(q1)*q2 
+    u2 = np.sqrt(q1)*(1-2*q2)
+    return round(u1,4), round(u2,4)
 				
     
 def aR_to_rho_star(P,aR):
