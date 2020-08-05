@@ -6,7 +6,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 
 setuptools.setup(
     name="Planet_tools", # Replace with your own username
-    version="0.0.1",
+    version="0.0.2",
     author="Babatunde Akinsanmi",
     author_email="tunde.akinsanmi@astro.up.pt",
     description="Package with useful functions for exoplanetary research",
