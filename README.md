@@ -56,3 +56,9 @@ The **some_stats** module contains the following functions:
  - **aic** - Calculate the Aikake information criterion.
  - **rmse** - Calculate the root-mean-square of the inputed error array (residuals)
  - **sse** - Calculate the sum of squared error of inputed error array (residuals)
+ - **mse** - Calculate the mean-square error of imputed error array
+ - **mae** - Calculate the mean-absolute error of imputed error array
+ - **rse** - Calculate the relative-square error from the observed and calculated values
+ - **rae** - Calculate the relative-absolute error from the observed and calculated values 
+ - **r_squared** - Calculate the R2_score commonly
+
