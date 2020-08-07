@@ -1,12 +1,12 @@
 import setuptools
 import os, glob
-
+from version import __version__
 
 here = os.path.abspath(os.path.dirname(__file__))
 
 setuptools.setup(
     name="Planet_tools", # Replace with your own username
-    version="0.0.2",
+    version=__version__,
     author="Babatunde Akinsanmi",
     author_email="tunde.akinsanmi@astro.up.pt",
     description="Package with useful functions for exoplanetary research",
@@ -19,4 +19,5 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
+    extras_require = { "dev": [ "pytest >=3.7 "],},
 )
