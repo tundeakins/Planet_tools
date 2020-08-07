@@ -1,6 +1,6 @@
 import setuptools
 import os, glob
-from version import __version__
+from Planet_tools.__version__ import __version__
 
 here = os.path.abspath(os.path.dirname(__file__))
 
