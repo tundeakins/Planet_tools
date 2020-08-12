@@ -26,8 +26,10 @@ The **convert_params** module contains the following functions:
  - **impact_parameter** - Convert inclination to impact parameter b
  
  - **inclination** - Convert impact parameter b to inclination in degrees.
- - **kipping_ld** - Re-parameterize quadratic limb darkening parameters $u_{1}$ and $u_{2}$ according to Kipping (2013)
-  - **kipping_to_quadLD** - transform kipping (2013) ldcs $q_{1}$ and $q_{2}$ to the usual quadratic limb darkening parameters $u_{1}$ and $u_{2}$.)
+ - **kipping_LD** - Re-parameterize quadratic limb darkening parameters $u_{1}$ and $u_{2}$ according to Kipping (2013)
+ - **kipping_to_quadLD** - transform kipping (2013) ldcs $q_{1}$ and $q_{2}$ to the usual quadratic limb darkening parameters $u_{1}$ and $u_{2}$.)
+ - **kipping_to_Power2LD** - Re-parameterize kipping (2013)[1] ldcs $q_{1}$ and $q_{2}$ to the Power-2 limb darkening parameters $h_{1}$ and $h_{2}$
+ - **Power2_to_kippingLD** - Transform Power-2 limb darkening parameters $h_{1}$ and $h_{2}$ (Maxted 2018) to Kipping (2013) coefficients.
  - **prot** - Convert stellar rotation velocity vsini in km/s to rotation period in days.
  - **rho_to_aR** - Convert stellar density to semi-major axis of planet with a particular period
  - **vsini** - Convert stellar rotation period to vsini in km/s.
