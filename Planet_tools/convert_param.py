@@ -143,9 +143,9 @@ def prot(vsini,st_rad):
     
     return prot
     
-def kipping_LD(u1,u2):
+def kipping_LD(u1,u2,rounded=5):
     """
-    Re-parameterize quadratic limb darkening parameters $u_{1}$ and $u_{2}$ according to Kipping (2013) [1]     
+    Re-parameterize quadratic limb darkening parameters u1 and u2 according to Kipping (2013) [1]     
     
     Parameters:
     ----------
@@ -157,6 +157,10 @@ def kipping_LD(u1,u2):
     --------
     q1, q2 : Tuple containing the reparametrized limb darkening coefficients
     
+    Note:
+    ------
+    Conditions: 0< q1<1, 0<=q2<1
+    
     References:
     -----------
     [1] https://ui.adsabs.harvard.edu/abs/2013MNRAS.435.2152K/abstract
@@ -166,11 +170,11 @@ def kipping_LD(u1,u2):
     q1 = (u1+u2)**2
     q2= u1/(2*(u1+u2))
     
-    return round(q1,4), round(q2,4)
+    return round(q1,rounded), round(q2,rounded)
 				
-def kipping_to_quadLD(q1,q2):
+def kipping_to_quadLD(q1,q2,rounded=5):
     """
-    Re-parameterize kipping 2013 ldcs $q_{1}$ and $q_{2}$ to the usual quadratic limb darkening parameters $u_{1}$ and $u_{2}$. according to Kipping (2013) [1] 
+    Re-parameterize kipping 2013 ldcs q1 and q2 to the usual quadratic limb darkening parameters u1 and u2. according to Kipping (2013) [1] 
     
     
     Parameters:
@@ -179,9 +183,13 @@ def kipping_to_quadLD(q1,q2):
     
     q2: quadratic limb darkening coefficient.
     
-    Returns
+    Returns:
     --------
     u1, u2 : Tuple containing the quadratic limb darkening coefficients
+    
+    Note:
+    ------
+    Conditions: u1+u2<1, u1>0, u1+2u2>0.
     
     References:
     -----------
@@ -191,12 +199,12 @@ def kipping_to_quadLD(q1,q2):
     import numpy as np
     u1 = 2 * np.sqrt(q1)*q2 
     u2 = np.sqrt(q1)*(1-2*q2)
-    return round(u1,4), round(u2,4)
+    return round(u1,rounded), round(u2,rounded)
     
 
-def kipping_to_Power2LD(q1,q2):
+def kipping_to_Power2LD(q1,q2,rounded=5):
     """
-    Re-parameterize kipping (2013)[1] ldcs $q_{1}$ and $q_{2}$ to the Power-2 limb darkening parameters $h_{1}$ and $h_{2}$ according to (Maxted 2018) [2] and Donald et al 2019 [3].
+    Re-parameterize kipping (2013)[1] ldcs q1 and q2 to the Power-2 limb darkening parameters h1 and h2 according to (Maxted 2018) [2] and Donald et al 2019 [3].
     
     Parameters:
     ----------
@@ -204,11 +212,15 @@ def kipping_to_Power2LD(q1,q2):
     
     q2: quadratic limb darkening coefficient.
     
-    Returns
+    Returns:
     --------
     h1, h2 : Tuple containing the the transformed limb darkening coefficients
     
-    References
+    Note:
+    -------
+    Conditions: h1>0,  h2>0,  h2 <= h1, and h1<1.
+    
+    References:
     ----------
     [1] https://ui.adsabs.harvard.edu/abs/2013MNRAS.435.2152K/abstract
     
@@ -220,11 +232,11 @@ def kipping_to_Power2LD(q1,q2):
     import numpy as np
     h1 = 1 - np.sqrt(q1) + q2*np.sqrt(q1) 
     h2 = 1 - np.sqrt(q1)
-    return round(h1,4), round(h2,4)
+    return round(h1,rounded), round(h2,rounded)
     
-def Power2_to_kippingLD(h1,h2):
+def Power2_to_kippingLD(h1,h2,rounded=5):
     """
-    Transform Power-2 limb darkening parameters $h_{1}$ and $h_{2}$ (Maxted 2018 [1]) to Kipping (2013 [2]) coefficients 
+    Transform Power-2 limb darkening parameters h1 and h2 (Maxted 2018 [1]) to Kipping (2013 [2]) coefficients. Conditions h1>0,  h2>0,  h2 <= h1, and h1<1. 
     
     
     Parameters:
@@ -237,6 +249,10 @@ def Power2_to_kippingLD(h1,h2):
     --------
     q1, q2 : Tuple containing the reparametrized limb darkening coefficients
     
+    Note:
+    ------
+    Conditions: 0< q1<1, 0<=q2<1
+    
     References
     ----------
     [1] https://ui.adsabs.harvard.edu/abs/2018A%26A...616A..39M/abstract
@@ -248,7 +264,7 @@ def Power2_to_kippingLD(h1,h2):
     q1 = (1-h2)**2
     q2= (h1-h2)/(1-h2)
     
-    return round(q1,4), round(q2,4)
+    return round(q1,rounded), round(q2,rounded)
 				
     
 def aR_to_rho_star(P,aR):
