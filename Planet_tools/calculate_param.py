@@ -1,6 +1,8 @@
 import numpy as np
 import astropy.constants as c
 import astropy.units as u
+from uncertainties.umath import  asin, sqrt, log
+from .convert_param import P_to_aR
 			
 def planet_prot(f,req,mp,j2):
     """
@@ -23,7 +25,7 @@ def planet_prot(f,req,mp,j2):
 
     radius=req*c.R_jup
     mass= mp*c.M_jup
-    prot=2*np.pi*np.sqrt(radius**3 / (c.G*mass*(2*f-3*j2)))
+    prot=2*np.pi*sqrt(radius**3 / (c.G*mass*(2*f-3*j2)))
 	
     return prot.to(u.hr).value
     
@@ -92,7 +94,7 @@ def sigma_CCF(res):
     sigma: CCF Width of non-rotating star in km/s 
     """
     
-    return 3e5/(res*2*np.sqrt(2*np.log(2)))
+    return 3e5/(res*2*sqrt(2*log(2)))
     
 def transit_duration(P,Rp,b,a):
     
@@ -116,24 +118,25 @@ def transit_duration(P,Rp,b,a):
     
     """
     
-    tdur= (P*24/np.pi) * (np.arcsin(np.sqrt((1+Rp)**2-b**2)/a))
+    tdur= (P*24/np.pi) * (asin(sqrt((1+Rp)**2-b**2)/a))
     
     return  tdur
     
-def ingress_duration(P,R,M,Rp,format="days"):
+def ingress_duration(Rp,P,R,M,format="days"):
     """
     Function to calculate the duration of ingress/egress.
     
     Parameters:
     ----------
+    Rp: Radius of the planet in unit of the stellar radius.
+
     P: Period of the planet.
     
     R: Radius of the star in units of solar radii.
     
     M: Mass of star in units of solar masses
     
-    Rp: Radius of the planet in unit of the stellar radius.
-    
+   
     format: Unit of P (str). Specify "days" or "years"
     
     
@@ -147,8 +150,8 @@ def ingress_duration(P,R,M,Rp,format="days"):
     
     if format=='days':
         P=P/365.
-
-    vel= 2*np.pi* a_r(P,R,M,format='years')/float(P)
+        
+    vel= 2*np.pi* P_to_aR(P,R,M,format='years')/float(P)
     
     ingress_dur= 2* Rp/vel  *365*24*60
     
@@ -175,7 +178,7 @@ def T_eq(T_st,a_r):
         Equilibrium temperature of the planet
     """
     print("T_st is {0:.2f}, a_r is {1:.2f}".format(T_st,a_r))
-    return T_st*np.sqrt(0.5/a_r)
+    return T_st*sqrt(0.5/a_r)
 
 def R_roche(rho_pl, rho_sat):
     """

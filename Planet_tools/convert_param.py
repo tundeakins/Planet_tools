@@ -1,3 +1,4 @@
+from uncertainties.umath import acos, radians, degrees, sin, cos
 
 
 def P_to_aR(P,R,M,format='days'):
@@ -67,13 +68,11 @@ def impact_parameter(inc,a,format='deg',e=0,w=90):
     
     b: impact parameter
     """
-    import numpy as np
-
-    ecc_factor=(1-e**2)/(1+e*np.sin(np.deg2rad(w)))  
+    ecc_factor=(1-e**2)/(1+e*sin(radians(w)))  
     if format == 'deg':
-        inc = np.radians(inc)
+        inc = radians(inc)
 
-    return a*np.cos(inc)*ecc_factor
+    return a*cos(inc)*ecc_factor
 
 def inclination(b,a,e=0,w=90):
     """
@@ -92,9 +91,8 @@ def inclination(b,a,e=0,w=90):
     inc: The inclination of the planet orbit in degrees.
     
     """
-    import numpy as np
-    ecc_factor=(1-e**2)/(1+e*np.sin(np.deg2rad(w)))  
-    inc = np.rad2deg(np.arccos( float(b) / (a*ecc_factor)) )
+    ecc_factor=(1-e**2)/(1+e*sin(radians(w)))  
+    inc = degrees(acos( float(b) / (a*ecc_factor)) )
     return round(inc, 2)
     
 def vsini(prot,st_rad):
@@ -143,7 +141,7 @@ def prot(vsini,st_rad):
     
     return prot
     
-def kipping_LD(u1,u2,rounded=5):
+def kipping_LD(u1,u2):
     """
     Re-parameterize quadratic limb darkening parameters u1 and u2 according to Kipping (2013) [1]     
     
@@ -170,9 +168,9 @@ def kipping_LD(u1,u2,rounded=5):
     q1 = (u1+u2)**2
     q2= u1/(2*(u1+u2))
     
-    return round(q1,rounded), round(q2,rounded)
+    return q1, q2
 				
-def kipping_to_quadLD(q1,q2,rounded=5):
+def kipping_to_quadLD(q1,q2):
     """
     Re-parameterize kipping 2013 ldcs q1 and q2 to the usual quadratic limb darkening parameters u1 and u2. according to Kipping (2013) [1] 
     
@@ -196,13 +194,12 @@ def kipping_to_quadLD(q1,q2,rounded=5):
     [1] https://ui.adsabs.harvard.edu/abs/2013MNRAS.435.2152K/abstract
     
     """
-    import numpy as np
-    u1 = 2 * np.sqrt(q1)*q2 
-    u2 = np.sqrt(q1)*(1-2*q2)
-    return round(u1,rounded), round(u2,rounded)
+    u1 = 2 *q1**0.5 *q2 
+    u2 = q1**0.5*(1-2*q2)
+    return u1, u2
     
 
-def kipping_to_Power2LD(q1,q2,rounded=5):
+def kipping_to_Power2LD(q1, q2):
     """
     Re-parameterize kipping (2013)[1] ldcs q1 and q2 to the Power-2 limb darkening parameters h1 and h2 according to (Maxted 2018) [2] and Donald et al 2019 [3].
     
@@ -229,12 +226,11 @@ def kipping_to_Power2LD(q1,q2,rounded=5):
     [3] https://ui.adsabs.harvard.edu/abs/2019RNAAS...3..117S/abstract
     
     """
-    import numpy as np
-    h1 = 1 - np.sqrt(q1) + q2*np.sqrt(q1) 
-    h2 = 1 - np.sqrt(q1)
-    return round(h1,rounded), round(h2,rounded)
+    h1 = 1 - q1**0.5 + q2*q1**0.5 
+    h2 = 1 - q1**0.5
+    return h1, h2
     
-def Power2_to_kippingLD(h1,h2,rounded=5):
+def Power2_to_kippingLD(h1,h2):
     """
     Transform Power-2 limb darkening parameters h1 and h2 (Maxted 2018 [1]) to Kipping (2013 [2]) coefficients. Conditions h1>0,  h2>0,  h2 <= h1, and h1<1. 
     
@@ -264,7 +260,7 @@ def Power2_to_kippingLD(h1,h2,rounded=5):
     q1 = (1-h2)**2
     q2= (h1-h2)/(1-h2)
     
-    return round(q1,rounded), round(q2,rounded)
+    return q1, q2
 				
     
 def aR_to_rho_star(P,aR):
@@ -276,10 +272,10 @@ def aR_to_rho_star(P,aR):
     Parameters:
     -----------
     
-    P: array-like;
+    P: float, ufloat, array-like;
         The planet period in days
     
-    aR: array-like;
+    aR: float, ufloat, array-like;
         The scaled semi-major axis of the planet orbit
         
     Returns:
@@ -292,7 +288,10 @@ def aR_to_rho_star(P,aR):
     import astropy.constants as c
     import astropy.units as u
     import numpy as np
-    st_rho=(3*np.pi/(c.G*(P*u.day)**2)*aR**3).cgs
+    G = (c.G.to(u.cm**3/(u.g*u.second**2))).value
+    Ps = P*(u.day.to(u.second))
+    
+    st_rho=3*np.pi*aR**3 / (G*Ps**2) 
     return st_rho
     
 def rho_to_aR(rho,P):
@@ -302,10 +301,10 @@ def rho_to_aR(rho,P):
     Parameters:
     -----------
     
-    rho: array-like;
+    rho: float, ufloat, array-like;
         The density of the star in g/cm^3.
         
-    P: array-like;
+    P: float, ufloat, array-like;
         The period of the planet in days.
         
     Returns:
@@ -318,6 +317,8 @@ def rho_to_aR(rho,P):
     import astropy.constants as c
     import astropy.units as u
     import numpy as np
-    aR=(((rho*u.g/u.cm**3*(c.G*(P*u.day)**2))/(3*np.pi)).cgs)**(1/3.)
-    return aR.value
+    G = (c.G.to(u.cm**3/(u.g*u.second**2))).value
+    Ps = P*(u.day.to(u.second))
+    aR = ((rho*G*Ps**2)/(3*np.pi)) **(1/3.)
+    return aR
     
