@@ -1,7 +1,7 @@
 import numpy as np
 import astropy.constants as c
 import astropy.units as u
-from uncertainties.umath import  asin, sqrt, log
+from uncertainties.umath import  asin, sqrt, log, radians
 from .convert_param import P_to_aR
 			
 def planet_prot(f,req,mp,j2):
@@ -20,6 +20,10 @@ def planet_prot(f,req,mp,j2):
 	j2 : float;
 		quadrupole moment of the planet
 		
+    Returns:
+    --------
+    prot: rotation peropd of the planet in hours
+		
     """
 	
 
@@ -28,6 +32,34 @@ def planet_prot(f,req,mp,j2):
     prot=2*np.pi*sqrt(radius**3 / (c.G*mass*(2*f-3*j2)))
 	
     return prot.to(u.hr).value
+    
+    
+def transit_prob(Rp, aR, e=0, w=90):
+    """
+	Function to calculate period of rotation of a planet
+	
+	Parameters
+	-----------
+    Rp: float;
+        radius of the planet in unit f the stellar radius
+    
+    aR: float;
+        Scaled semi-major axis i.e. a/R*.
+
+    e: float;
+        eccentricity of the orbit.
+    
+    w: float;
+        longitude of periastron in degrees
+    
+		
+    """
+	
+    prob = (1 + Rp)/aR * (1 + e*sin(radians(w))/(1-e**2)  )
+
+	
+    return prob
+    
     
 def ldtk_ldc(lambda_min,lambda_max,Teff,Teff_unc, logg,logg_unc,z,z_unc):
     """
@@ -96,7 +128,7 @@ def sigma_CCF(res):
     
     return 3e5/(res*2*sqrt(2*log(2)))
     
-def transit_duration(P,Rp,b,a):
+def transit_duration(P, Rp, b, a):
     
     """
     Function to calculate the transit duration
@@ -260,3 +292,39 @@ def phase_fold(time, t0, P):
     
     return ( (time-t0) % P) / float(P)
     
+
+
+#def true_anomaly(t, tp, per, e):
+    """
+    Calculate the true anomaly for a given time, period, eccentricity.
+    from radvel: https://github.com/California-Planet-Search/radvel
+    
+    Parameters:
+    -----------
+    t: array;
+        array of times in JD
+    tp: float;
+        time of periastron, same units as t
+    
+    per: float;
+        orbital period in days
+        
+    e: float;
+        eccentricity
+
+    Returns:
+    -------
+    array: true anomoly at each time
+    """
+#	import radvel
+    # f in Murray and Dermott p. 27
+#    m = 2 * np.pi * (((t - tp) / per) - np.floor((t - tp) / per))
+#    eccarr = np.zeros(t.size) + e
+#    e1 = radvel.kepler.kepler(m, eccarr)
+#    n1 = 1.0 + e
+#    n2 = 1.0 - e
+#    nu = 2.0 * np.arctan((n1 / n2)**0.5 * np.tan(e1 / 2.0))
+
+#    return nu
+    
+

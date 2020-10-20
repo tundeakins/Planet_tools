@@ -1,4 +1,5 @@
 from scipy.signal import medfilt
+import numpy as np
 
 def clip_outliers(x, y, yerr = None, clip=5, width=15, verbose=True):
 
@@ -65,4 +66,6 @@ def phase_fold(t, period, t0):
     
     """
     return ((t - t0 + 0.5*period)%period - 0.5*period )/period
-   
+
+
+
