@@ -1,7 +1,7 @@
 from scipy.signal import medfilt
 import numpy as np
 
-def clip_outliers(x, y, yerr = None, clip=5, width=15, verbose=True):
+def clip_outliers(x, y, yerr = None, clip=5, width=15, verbose=True, return_clipped_indices = False):
 
     """
     Remove outliers using a running median method. Points > clip*M.A.D are removed
@@ -37,7 +37,13 @@ def clip_outliers(x, y, yerr = None, clip=5, width=15, verbose=True):
         print('\nRejected {} points more than {:0.1f} x MAD from the median'.format(sum(~ok),clip))
     
     if yerr is None:
-            return x[ok], y[ok]
+        if return_clipped_indices:
+            return x[ok], y[ok], ~ok
+            
+        return x[ok], y[ok]
+    
+    if return_clipped_indices:
+        return x[ok], y[ok], yerr[ok], ~ok
     
     return x[ok], y[ok], yerr[ok]
 
