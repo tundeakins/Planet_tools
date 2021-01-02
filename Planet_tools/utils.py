@@ -29,7 +29,7 @@ def clip_outliers(x, y, yerr = None, clip=5, width=15, verbose=True, return_clip
     x_new, y_new, yerr_new: Each and array with the remaining points after clipping
     
     """
-    dd = abs( medfilt(y, width) - y)
+    dd = abs( medfilt(y-1, width)+1 - y)   #medfilt pads with zero, so filtering at edge is better if flux level is taken to zero(y-1)
     mad = dd.mean()
     ok= dd < clip * mad
 
