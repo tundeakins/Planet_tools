@@ -1,8 +1,8 @@
 import numpy as np
 import astropy.constants as c
 import astropy.units as u
-from uncertainties.umath import  asin, sqrt, log, radians
-from .convert_param import P_to_aR
+from uncertainties.umath import  asin, sqrt, log, radians, sin, cos
+from .convert_param import P_to_aR, inclination
 			
 def planet_prot(f,req,mp,j2):
     """
@@ -54,7 +54,7 @@ def transit_prob(Rp, aR, e=0, w=90):
     
 		
     """
-	
+	#eqn 5 - Kane & von Braun 2008, https://core.ac.uk/reader/216127860
     prob = (1 + Rp)/aR * (1 + e*sin(radians(w))/(1-e**2)  )
 
 	
@@ -128,10 +128,10 @@ def sigma_CCF(res):
     
     return 3e5/(res*2*sqrt(2*log(2)))
     
-def transit_duration(P, Rp, b, a):
+def transit_duration(P, Rp, a, b=0, e=0, w=90, inc=None, total=True):
     
     """
-    Function to calculate the transit duration
+    Function to calculate the total (T14) or full (T23) transit duration
     
     Parameters:
     ----------
@@ -143,51 +143,92 @@ def transit_duration(P, Rp, b, a):
     b: Impact parameter of the planet transit [0, 1+Rp]
 
     a: scaled semi-major axis of the planet in units of solar radius
+    
+    inc: inclination of the orbit. Optional. If given b is not used. if None, b is used to calculate inc
+    
+    total: if True calculate the the total transit duration T14, else calculate duration of full transit T23
 
     Returns
     -------
     Tdur: duration of transit in hours    
     
     """
+    #eqn 30 and 31 of Kipping 2010 https://doi.org/10.1111/j.1365-2966.2010.16894.x
+        
+    factor = (1-e**2)/(1+e*sin(radians(w)))
+    if inc == None:
+        inc = inclination(b,a,e,w)
     
-    tdur= (P*24/np.pi) * (asin(sqrt((1+Rp)**2-b**2)/a))
+    if total is False:
+        Rp = -Rp
+        
+    sini = sin(radians(inc))
+    cosi = cos(radians(inc))
+    
+    denom = a*factor*sini
+    
+    tdur= (P*24/np.pi) * (factor**2/sqrt(1-e**2)) * (asin ( sqrt((1+Rp)**2 - (a*factor*cosi)**2)/ denom ) )
     
     return  tdur
     
-def ingress_duration(Rp,P,R,M,format="days"):
+def ingress_duration_appox(P, Rp, aR):
     """
     Function to calculate the duration of ingress/egress.
     
     Parameters:
-    ----------
+    ---------
+    P: Orbital period of the planet in days    
+    
     Rp: Radius of the planet in unit of the stellar radius.
 
-    P: Period of the planet.
-    
-    R: Radius of the star in units of solar radii.
-    
-    M: Mass of star in units of solar masses
-    
-   
-    format: Unit of P (str). Specify "days" or "years"
-    
+    aR: Scaled semi-major axis of the orbit
     
     
     Returns
     -------
-    ingress_dur: Duration of ingres/egress in minutes.       
+    ingress_dur: very rough approximate of the Duration of ingres/egress in minutes.       
     
     
     """
-    
-    if format=='days':
-        P=P/365.
         
-    vel= 2*np.pi* P_to_aR(P,R,M,format='years')/float(P)
+    vel= 2*np.pi* aR/P
     
-    ingress_dur= 2* Rp/vel  *365*24*60
+    ingress_dur= 2* Rp/vel  *24*60
     
     return ingress_dur
+    
+def ingress_duration(P, Rp, a, b=0, e=0, w=90, inc=None, total=True):
+    
+    """
+    Function to calculate the ingress/egress duration T12/23 assuming symmetric light curve
+    
+    Parameters:
+    ----------
+    
+    P: Period of planet orbit in days
+
+    Rp: Radius of the planet in units of stellar radius
+
+    b: Impact parameter of the planet transit [0, 1+Rp]
+
+    a: scaled semi-major axis of the planet in units of solar radius
+    
+    inc: inclination of the orbit. Optional. If given b is not used. if None, b is used to calculate inc
+    
+    total: if True calculate the the total transit duration T14, else calculate duration of full transit T23
+
+    Returns
+    -------
+    Tdur: duration of transit in hours    
+    
+    """
+    #eqn 43 of Kipping 2010 https://doi.org/10.1111/j.1365-2966.2010.16894.x
+        
+    T14 = transit_duration(P, Rp, a, b=0, e=e, w=w, inc=inc, total=True)
+    T23 = transit_duration(P, Rp, a, b=0, e=e, w=w, inc=inc, total=False)
+    
+    return  (T14 - T23)/2.
+
     
 
 def T_eq(T_st,a_r):
@@ -232,6 +273,29 @@ def R_roche(rho_pl, rho_sat):
     """    
     
     return  2.44*((1.0*rho_pl)/rho_sat)**(1/3.)
+    
+ 
+def max_ring_density(rho_pl):
+    """
+    Use Roche formular to compute maximum density of ring material given planet density in g/cm3.
+    since rings cannot be sustained beyond roche limit, we assume the observed radius is the roche limit of possible ringed planet. 
+    
+    Parameters:
+    ----------
+    rho_pl: ufloat, float, array-like;
+        Density of the planet. ufloat from uncertainties package allows the uncertainties in planet density to be propagated
+        to the resulting ring density 
+        
+
+    Returns
+    -------
+    
+    rho_ring: Array-like;
+        maximum ring density a planet can have. 
+    """    
+    
+    return  rho_pl * 2.46**3
+    
     
     
 def R_hill(mp, m_st, a_r,rp):

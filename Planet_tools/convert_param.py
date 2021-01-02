@@ -26,7 +26,7 @@ def P_to_aR(P,R,M,format='days'):
     aR: Scaled semi-major axis.
     
     """
-    AU_factor = c.au.to(u.km)/(R*rsun)
+    AU_factor = c.au.to(u.km).value/(R*rsun)
     if format == 'days':
         P=P/365.
         
@@ -49,7 +49,7 @@ def AU_to_aR(AU,R):
     aR: Scaled semi-major axis.
     
     """
-    return AU*c.au.to(u.km) / (R*rsun)
+    return AU*c.au.to(u.km).value / (R*rsun)
 
     
 
@@ -346,7 +346,7 @@ def rho_to_aR(rho,P):
 
 def timeperi_to_timetrans(tp, per, ecc, omega, secondary=False):
     """
-    Convert Time of Periastron `tp` to Time of Transit i.e time of conjunction `tc`.
+    Convert Time of Periastron passage `tp` to Time of Transit i.e time of conjunction `tc`.
     For circular orbits with ecc=0 and w=90. tc = tp.
     Adopted from radvel: https://github.com/California-Planet-Search/radvel
     see also: http://www.sternwarte.uni-erlangen.de/~hanke/science/VelaX-1/ellipticalOrbits.pdf
@@ -355,7 +355,7 @@ def timeperi_to_timetrans(tp, per, ecc, omega, secondary=False):
     Parameters:
     -----------
     tp: float;
-        time of periastron passage in days or phase
+        time of periastron passage
         
     per: float;
         Planet period in same unit as tp. if tp is a phase then per = 1.
@@ -401,13 +401,13 @@ def timeperi_to_timetrans(tp, per, ecc, omega, secondary=False):
 
 def timetrans_to_timeperi(tc, per, ecc, omega):
     """
-    Convert Time of Transit to Time of Periastron Passage (from radvel)
+    Convert Time of Transit (conjunction/midtransit) to Time of Periastron Passage (Taken from radvel)
     https://github.com/California-Planet-Search/radvel
     
     Parameters:
     ----------
     tc: float;
-        time of transit
+        time of midtransit (conjunction)
     
     per: float;
         period in same unit as tc. if tc is a phase, use per = 1
