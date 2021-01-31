@@ -435,4 +435,39 @@ def timetrans_to_timeperi(tc, per, ecc, omega):
 
     return tp
 
+def r1r2_to_bp(r1,r2,pl=0.01, pu=0.25):
+    """
+    Convert uniform samling of r1 and r2 to impact parameter b and and radius ratio p
+    following Espinoza 2018, https://iopscience.iop.org/article/10.3847/2515-5172/aaef38/meta
+    
+    Paramters:
+    -----------
+    r1, r2: float;
+        uniform parameters in from u(0,1)
+    
+    pl, pu: float;
+        lower and upper limits of the radius ratio
+        
+    
+    Return:
+    -------
+    b, p: tuple;
+        impact paramter and radius ratio
+    """
+    
+    assert 0<r1<=1 and 0<r2<=1, f"r1 and r2 needs to be u(0,1) but r1={r1}, r2={r2}"
+    
+    Ar = (pu-pl)/(2+pu+pl)
+    
+    if r1 > Ar:
+        b = (1+pl) * (1 + (r1-1)/(1-Ar) )
+        p = (1-r2)*pl + r2*pu
+    
+    elif r1 <= Ar:
+        q1 = r1/Ar
+        
+        b = (1+pl) + q1**0.5 * r2*(pu-pl)
+        p = pu + (pl-pu)* q1**0.5*(1-r2)
+    return b, p
+    
     

@@ -1,5 +1,6 @@
 from scipy.signal import medfilt
 import numpy as np
+import matplotlib.pyplot as plt
 
 def clip_outliers(x, y, yerr = None, clip=5, width=15, verbose=True, return_clipped_indices = False):
 
@@ -73,5 +74,44 @@ def phase_fold(t, period, t0):
     """
     return ((t - t0 + 0.5*period)%period - 0.5*period )/period
 
+
+def plot_emcee_chains(sampler, labels=None, thin=1, discard=0, figsize=None, alpha=0.05 ):
+    """
+    Plot chains from emcee sampler run.
+    
+    Parameters:
+    -----------
+    sampler: array-like; shape: (nsteps, nwalkers, ndim)
+    	Sampler from emcee run
+    
+    labels: array/list of len ndim
+    	Label for the parameters of the chain
+    	
+    Return:
+    -------
+    fig
+    	
+    """
+    samples = sampler.get_chain(thin = thin, discard=discard)
+    ndim, nwalkers = samples.shape[2], samples.shape[1]
+    if figsize is None: figsize = (12,7+int(ndim/2))
+    fig, axes = plt.subplots(ndim, sharex=True, figsize=figsize)
+    
+    if thin > 1 and discard > 0:
+        axes[0].set_title(f"Discarded first {discard} steps & thinned by {thin}", fontsize=14)
+    elif thin > 1 and discard == 0:
+        axes[0].set_title(f"Thinned by {thin}", fontsize=14)
+    else:
+        axes[0].set_title(f"Discarded first {discard} steps", fontsize=14)
+    
+    for i in range(ndim):
+        ax = axes[i]
+        ax.plot(samples[:,:,i],"k", alpha=alpha)
+        ax.set_xlim(0,len(samples))
+        ax.set_ylabel(labels[i])
+    axes[-1].set_xlabel("step number", fontsize=14);
+    
+    return fig
+    
 
 
