@@ -272,10 +272,10 @@ def R_roche(rho_pl, rho_sat):
         Roche radius of the planet
     """    
     
-    return  2.44*((1.0*rho_pl)/rho_sat)**(1/3.)
+    return  2.46*((1.0*rho_pl)/rho_sat)**(1/3.)
     
  
-def max_ring_density(rho_pl):
+def max_ring_density(rho_pl, f=1, verbose=True):
     """
     Use Roche formular to compute maximum density of ring material given planet density in g/cm3.
     since rings cannot be sustained beyond roche limit, we assume the observed radius is the roche limit of possible ringed planet. 
@@ -283,9 +283,11 @@ def max_ring_density(rho_pl):
     Parameters:
     ----------
     rho_pl: ufloat, float, array-like;
-        Density of the planet. ufloat from uncertainties package allows the uncertainties in planet density to be propagated
+        Inferred density of the planet given the obserced radius and estimated mass. ufloat from uncertainties package allows the uncertainties in planet density to be propagated
         to the resulting ring density 
-        
+    
+    f: float;
+    	factor to account for 
 
     Returns
     -------
@@ -293,8 +295,9 @@ def max_ring_density(rho_pl):
     rho_ring: Array-like;
         maximum ring density a planet can have. 
     """    
-    
-    return  rho_pl * 2.46**3
+    rho_r = rho_pl * (2.46* f**0.5)**3 
+    if verbose: print(f"Any ring around this planet must have density below {rho_r} in order to be within the Roche limit. Check ```T_eq``` of this planet to ensure that ring of such density can exist.")
+    return  rho_r
     
     
     
