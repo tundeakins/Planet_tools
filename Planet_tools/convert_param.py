@@ -419,18 +419,18 @@ def r1r2_to_bp(r1,r2,pl=0.01, pu=0.25):
     Return:
     -------
     b, p: tuple;
-        impact paramter and radius ratio
+        impact parameter and radius ratio
     """
     
-    assert 0<r1<=1 and 0<r2<=1, f"r1 and r2 needs to be u(0,1) but r1={r1}, r2={r2}"
+    assert np.all(0<r1) and np.all(r1<=1) and np.all(0<r2) and np.all(r2<=1), f"r1 and r2 needs to be u(0,1) but r1={r1}, r2={r2}"
     
     Ar = (pu-pl)/(2+pu+pl)
     
-    if r1 > Ar:
+    if np.all(r1 > Ar):
         b = (1+pl) * (1 + (r1-1)/(1-Ar) )
         p = (1-r2)*pl + r2*pu
     
-    elif r1 <= Ar:
+    elif np.all(r1 <= Ar):
         q1 = r1/Ar
         
         b = (1+pl) + q1**0.5 * r2*(pu-pl)

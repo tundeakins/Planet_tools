@@ -229,7 +229,45 @@ def ingress_duration(P, Rp, a, b=0, e=0, w=90, inc=None, total=True):
     
     return  (T14 - T23)/2.
 
+
+def effective_ringed_planet_radius(rp,rin,rout,ir):
+    """
+    Calculate effective radius of a ringed planet accounting for possible overlap between ring and planet. - eqn (2) from zuluaga+2015 http://dx.doi.org/10.1088/2041-8205/803/1/L14
     
+    Parameters:
+    -----------
+    rp : float, ufloat;
+        Radius of the planet hosting the ring
+    
+    rin, rout : float, ufloat;
+        Inner and outer radii of the ring in units of rp.
+        
+    ir : float, ufloat;
+        Inclination of the ring from the skyplane. 0 is face-on ring, 90 is edge on
+    
+    Returns:
+    --------
+    eff_R : float, ufloat;
+        effective radius of the ringed planet in same unit as rp
+    	
+    """	
+    
+    cosir = cos(radians(ir))
+    sinir = sin(radians(ir))
+    y = lambda r: sqrt(r**2 -1)/(r*sinir)
+
+    def eff(r):
+        if r*cosir > 1:
+            eff_r = r**2 * cosir - 1
+        else:
+            eff_r = (r**2*cosir * 2/np.pi*asin(y(r))) - (2/np.pi*asin(y(r)*r*cosir))
+        
+        return eff_r
+    rout_eff2 = eff(rout)
+    rin_eff2 = eff(rin) 
+    
+    Arp = rp**2 + rp**2*(rout_eff2 - rin_eff2)
+    return sqrt(Arp)
 
 def T_eq(T_st,a_r):
     """
