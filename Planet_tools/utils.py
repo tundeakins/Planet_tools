@@ -1,6 +1,7 @@
 from scipy.signal import medfilt
 import numpy as np
 import matplotlib.pyplot as plt
+from types import SimpleNamespace
 
 def clip_outliers(x, y, yerr = None, clip=5, width=15, verbose=True, return_clipped_indices = False):
 
@@ -112,6 +113,56 @@ def plot_emcee_chains(sampler, labels=None, thin=1, discard=0, figsize=None, alp
     axes[-1].set_xlabel("step number", fontsize=14);
     
     return fig
+    
+def oversampling(time, oversample_factor, exp_time):
+
+    """
+    oversample time of data of long integration time and rebin the data after computation with oversampled time 
+    
+    Parameters:
+    ----------
+    
+    time : ndarray;
+        array of time to oversample
+    
+    oversampler_factor : int;
+        number of points subdividing exposure
+    
+    exp_time: float;
+        exposure time of current data in same units as input time
+
+    Returns:
+    --------
+    ovs : oversampling object with attributes containing oversampled_time and function to rebin the dependent data back to original cadence.
+    
+    
+    Example:
+    --------
+    
+       t = np.arange(0,1000,10)
+       #some function to generate data based on t
+       fxn = lambda t: np.random.normal(1,100e-6, len(t))
+       #divide each 10min point in t into 30 observations
+       ovs = oversampling(t, 30, 10 )
+       t_oversampled = ovs.oversampled_time
+
+       #generate value of function at the oversampled time points
+       f_ovs = fxn(t_oversampled)
+       #then rebin f_ovs back to cadence of observation t
+       f = ovs.rebin_data(f_ovs)
+
+    """
+    t_offsets = np.linspace(-exp_time/2., exp_time/2., oversample_factor)
+    t_oversample = (t_offsets + time.reshape(time.size, 1)).flatten()
+    result = SimpleNamespace(oversampled_time=t_oversample)
+    
+    def rebin_data(data):
+        rebinned_data = np.mean(data.reshape(-1,oversample_factor), axis=1)
+        return rebinned_data
+    
+    result.rebin_data = rebin_data
+    
+    return result
     
 
 
