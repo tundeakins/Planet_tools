@@ -152,6 +152,7 @@ def oversampling(time, oversample_factor, exp_time):
        f = ovs.rebin_data(f_ovs)
 
     """
+    assert isinstance(time, np.ndarray), f'time must be a numpy array and not {type(time)}'
     t_offsets = np.linspace(-exp_time/2., exp_time/2., oversample_factor)
     t_oversample = (t_offsets + time.reshape(time.size, 1)).flatten()
     result = SimpleNamespace(oversampled_time=t_oversample)
