@@ -57,7 +57,8 @@ def impact_parameter(inc, a, e=0, w=90, format='deg'):
     """
     Function to convert inclination to impact parameter b.
     input format of angles as 'deg' or 'rad'.
-    see eq. 1.19 in https://www.astro.ex.ac.uk/people/alapini/Publications/PhD_chap1.pdf 
+    see eq. 1.19 in https://www.astro.ex.ac.uk/people/alapini/Publications/PhD_chap1.pdf
+    also https://arxiv.org/pdf/1812.08549.pdf
     
     Parameters:
     ----------
@@ -115,7 +116,7 @@ def inclination(b, a, e=0, w=90):
     """
     ecc_factor=(1-e**2)/(1+e*sin(radians(w)))  
     inc = degrees(acos( float(b) / (a*ecc_factor)) )
-    return round(inc, 2)
+    return inc
     
 def vsini(prot, st_rad):
     """
