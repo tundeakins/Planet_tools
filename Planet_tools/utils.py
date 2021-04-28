@@ -165,5 +165,12 @@ def oversampling(time, oversample_factor, exp_time):
     
     return result
     
+def dynesty_results(res, q = 0.5):
+    from dynesty import utils as dyfunc
+
+    samples, weights = res.samples, np.exp(res.logwt - res.logz[-1])
+
+    return [dyfunc.quantile(samples[:,i], q, weights)[0] for i in range(samples.shape[1])]
+    
 
 
