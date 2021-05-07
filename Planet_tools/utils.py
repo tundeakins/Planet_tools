@@ -114,6 +114,42 @@ def plot_emcee_chains(sampler, labels=None, thin=1, discard=0, figsize=None, alp
     
     return fig
     
+    
+def plot_corner_lines(fig, ax, values, ndim=3, color="red", show_titles=False, title_fontsize=15,
+                      labels=None):
+    """
+    Plot indicator lines in the axes, ax, of a corner plot figure, fig.
+    
+    Parameters:
+    -----------
+    
+    fig : object;
+        corner plot object
+        
+    ax : array;
+        array of corner plot axes
+        
+    values : array-like (ndim, len(ax));
+        array of values to plot. ndim can be 1-3 so as to plot also the Credible Intervals.
+        0 is -1sigma, 1 is the median of maxlikelihood, 2 is +1sigma limits
+    
+    """
+    assert len(ax) == values.T.shape[0]
+    for i in range(len(ax)):
+        #ML
+        fig.axes[(len(ax)+1)*i].axvline(values[1][i], c=color)
+        if ndim > 1:
+            #CIs
+            [fig.axes[(len(ax)+1)*i].axvline(values[n][i], ls="dashed", c=color) for n in [0,2]]
+            
+        if show_titles and ndim>1:
+            lb = values[1][i] - values[0][i]
+            ub = values[2][i] - values[1][i]
+            fig.axes[(len(ax)+1)*i].set_title(f"{labels[i]} = {values[1][i]:.4f}$_{{-{lb:.4f}}}^{{+{ub:.4f}}}$",
+                                             fontsize=title_fontsize)
+            
+
+    
 def oversampling(time, oversample_factor, exp_time):
 
     """
@@ -172,5 +208,93 @@ def dynesty_results(res, q = 0.5):
 
     return [dyfunc.quantile(samples[:,i], q, weights)[0] for i in range(samples.shape[1])]
     
+  
+def bin_data(time, flux, err=None, nbins=20, statistic="mean"):
+
+    """
+    Calculate average flux and error in time bins of equal width.
+    
+    Parameters:
+    -----------
+    time : array;
+        array of times to bin
+    
+    flux : array-like time;
+        fluxes to perform the statistics on within each bin
+        
+    err : array-like time;
+        err on the flux. It is binned using np.mean(x)/np.sqrt(len(x)).
+        where x are the errors values in each bin.
+        
+    nbins: int;
+        Number of bins to to split the data into.
+        
+    statistic: "mean", "median";
+    	statistic to compute for the flux values in each bin. 
+        
+    Returns:
+        t_bin, y_bin, err_bin
+    
+    """
+    from scipy.stats import binned_statistic
+
+    y_bin, y_binedges, _ = binned_statistic(time, flux, statistic=statistic, bins=nbins)
+    bin_width = y_binedges[2] - y_binedges[1]
+    t_bin = y_binedges[:-1] + bin_width/2.
+    
+    if err is not None:
+        err_bin, _, _= binned_statistic(time, err, statistic = lambda x: 1/np.sqrt(np.sum(1/x**2)), bins=nbins)
+        return t_bin, y_bin, err_bin
+
+    return t_bin, y_bin
+    
+    
+def MaxLL_result_CI(chain, weights=None, dims=None, labels=None, stat="max_central"):
+    
+    """
+    Function to get maximum likelihood estimate of chain given results from dynesty.
+    
+    Parameters:
+    -----------
+    chain : dict, array;
+        2D samples from chain or the result dict from dynesty.
+        
+    weights: array;
+        weights of samples. If chain is a dict with including weights,
+        this is used else weights should be supplied if required
+        
+    dims: list;
+    	list of indexes to specify parameters to calculate
+        
+    stats: str;
+        statistic to use in computing the 68.27% CI around the maximum likelihood. default is 'max_central'
+        options are ['max', 'mean', 'cumulative', 'max_symmetric', 'max_shortest', 'max_central'].
+        FOr definitions, See figure 6 in Andrae(2010) - https://arxiv.org/pdf/1009.2755.pdf.
+        
+    Returns:
+    -------
+    MLL: array (n_pars, 3):
+        array containing [LB, mll, UB] for each parameter in samples
+    """
+    from chainconsumer import ChainConsumer
+    from dynesty import utils as dyfunc
+    
+    samples=chain
+    if isinstance(chain, dict):
+        samples = chain.samples
+        weights = np.exp(chain.logwt - chain.logz[-1])
+        
+    if dims is not None:
+        samples = samples[:,dims]
+            
+    c=ChainConsumer()
+    c.add_chain(samples, weights=weights, parameters=labels)
+    
+    c.configure(statistics=stat)
+    
+    summary = c.analysis.get_summary()
+    mll = [summary[key] for key in summary.keys()]
+        
+    return np.array(mll)
 
 

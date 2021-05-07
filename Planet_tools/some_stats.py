@@ -35,6 +35,38 @@ def bic(log_like, n, k):
     import numpy as np
     return -2. * log_like + k * np.log(n)
     
+def red_chisquare(data, model, error, npar):
+    """
+    Calculate the reduced chisquare. x2_red.
+    if x2_red ~ 1, the model fits the data well.
+    if x2_red << 1, the errors are overestimated, or the model is overfitting the data.
+    if x2_red >> 1, the errors are underestimated, or the model is underfitting the data.
+    
+    Parameters:
+    -----------
+    
+    data : array;
+        the observed data.
+        
+    model : array-like data;
+        calculated model to explain the data.
+        
+    error : array-like data;
+        error on the observed data points.
+        
+    npar : int;
+        number of fitted parameters in the model.
+        
+    Returns:
+    --------
+    
+    x2_red : float;
+        the reduced chisquare given by sum(((data-model)/error)**2) / (len(data)-npar)
+        
+    """
+    
+    return np.sum(((data-model)/error)**2) / (len(data)-npar)
+    
     
 def aic(log_like, n, k):
     """
