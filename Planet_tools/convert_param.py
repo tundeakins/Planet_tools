@@ -1,4 +1,4 @@
-from uncertainties.umath import acos, radians, degrees, sin, cos
+from uncertainties.umath import acos, radians, degrees, sin, cos, log
 import astropy.constants as c
 import astropy.units as u
 import numpy as np
@@ -177,12 +177,14 @@ def convert_LD_coeffs(c1, c2, convert_from = "q2u", verify=True):
     
     convert_from : string;
         specify which laws to convert from and to.
-        - To convert from u1,u2 to q1,q2 following [1] set convert_from = "u2q".
-        - To convert from q1,q2 to u1,u2 following [1] set convert_from = "q2u".
-        - From h1,h2 to q1,q2 following [1,2] set convert_from = "h2q".
-        - From q1,q2 to h1,h2 following [1,2,3] set convert_from = "q2h".	
-        - From h1,h2 to u1,u2 following [2,3] set convert_from = "h2u".
-        - From u1,u2 to h1,h2 following [2,3] set convert_from = "u2h".
+        - To convert from u1,u2 to triangular parameterization q1,q2 following [1] set convert_from = "u2q".
+        - To convert from triangular parameterization q1,q2 to u1,u2 following [1] set convert_from = "q2u".
+        - From h1,h2 to triangular parameterization q1,q2 following [1,2] set convert_from = "h2q".
+        - From triangular parameterization q1,q2 to h1,h2 following [1,2,3] set convert_from = "q2h".	
+        - From h1,h2 to c,a following [2,3] set convert_from = "h2ca".
+        - From power-2 ld c,a to h1,h2 following [2,3] set convert_from = "ca2h".
+        - From power-2 ld c,a to triangular parameterization q1,q2 following [2,3] set convert_from = "ca2q".
+        - From triangular parameterization q1,q2 to power-2 ld c,a following [2,3] set convert_from = "q2ca".
     Verify: bool;
     	confirm that the result satisfies the conditions of the LD law as given in Notes from [1,2,3]
         
@@ -193,9 +195,10 @@ def convert_LD_coeffs(c1, c2, convert_from = "q2u", verify=True):
     
     Note:
     -------
-    Conditions: h1>0,  h2>0,  h2 <= h1, and h1<1.
-    Conditions: 0< q1<1, 0<=q2<1	
-    Conditions: u1+u2<1, u1>0, u1+2u2>0.
+    Conditions 1: h1>0,  h2>0,  h2 <= h1, and h1<1.
+    Conditions 2: 0< q1<1, 0<=q2<1	
+    Conditions 3: u1+u2<1, u1>0, u1+2u2>0.
+    Conditions 4: 0<c≤1 and a >0
     
     References
     ----------
@@ -204,52 +207,58 @@ def convert_LD_coeffs(c1, c2, convert_from = "q2u", verify=True):
     [3] https://ui.adsabs.harvard.edu/abs/2019RNAAS...3..117S/abstract
            
     """
-    assert convert_from in ['u2q','q2u','h2u','u2h','h2q','q2h'], "invalid input for convert_from. Valid options are 'u2q','q2u','h2u','u2h','h2q','q2h' "
+    assert convert_from in ['u2q','q2u','h2ca','ca2h','h2q','q2h','ca2q','q2ca'], "invalid input for convert_from. Valid options are 'u2q','q2u','h2ca','ca2h','h2q','q2h','ca2q','q2ca' "
     
     if convert_from == "u2q":
         q1 = (c1+c2)**2
         q2 = c1/(2*(c1+c2))
-        if verify: assert np.all(0<q1) and np.all(q1<1) and np.all(0<=q2) and np.all(q2<1), f"obtained values of q1={q1} and q2={q2} do not meet the conditions of [1]. See Notes"         
+        if verify: assert np.all(0<q1) and np.all(q1<1) and np.all(0<=q2) and np.all(q2<1), f"obtained values of q1={q1} and q2={q2} do not meet the conditions of [1]: 0< q1<1, 0<=q2<1"         
         l1, l2 = q1, q2
         
     elif convert_from == "q2u":
         u1 = 2 *c1**0.5 *c2 
         u2 = c1**0.5*(1-2*c2)
-        if verify: assert np.all((u1+u2)<1) and np.all(u1>0) and np.all((u1+2*u2)>0), f"obtained value of u1={u1} and u2={u2} do not meet the conditions. See Notes" 
+        if verify: assert np.all((u1+u2)<1) and np.all(u1>0) and np.all((u1+2*u2)>0), f"obtained value of u1={u1} and u2={u2} do not meet the conditions: u1+u2<1, u1>0, u1+2u2>0" 
         l1, l2 = u1, u2
         
     elif convert_from == "h2q": 
         q1 = (1-c2)**2
         q2= (c1-c2)/(1-c2)
-        if verify: assert np.all(0<q1) and np.all(q1<1) and np.all(0<=q2) and np.all(q2<1), f"obtained values of q1={q1} and q2={q2} do not meet the conditions of [1]. See Notes"         
+        if verify: assert np.all(0<q1) and np.all(q1<1) and np.all(0<=q2) and np.all(q2<1), f"obtained values of q1={q1} and q2={q2} do not meet the conditions of [1]: 0< q1<1, 0<=q2<1"         
         l1, l2 = q1, q2
                    
     elif convert_from == "q2h": 
         h1 = 1 - c1**0.5 + c2*c1**0.5 
         h2 = 1 - c1**0.5
-        if verify: assert np.all(0<h1) and np.all(h1<1) and np.all(0<h2) and np.all(h2<=h1), f"obtained values of h1={h1} and h2={h2} do not meet the conditions of [3]. See Notes"
+        if verify: assert np.all(0<h1) and np.all(h1<1) and np.all(0<h2) and np.all(h2<=h1), f"obtained values of h1={h1} and h2={h2} do not meet the conditions of [3]: h1>0,  h2>0,  h2 <= h1, and h1<1"
         l1, l2 = h1, h2
         
-    elif convert_from == "h2u":
+    elif convert_from == "h2ca":
         #h2q
-        q1 = (1-c2)**2
-        q2= (c1-c2)/(1-c2)
-        #q2u
-        u1 = 2 *q1**0.5 *q2 
-        u2 = q1**0.5*(1-2*q2) 
-        if verify: assert np.all((u1+u2)<1) and np.all(u1>0) and np.all((u1+2*u2)>0), f"obtained value of u1={u1} and u2={u2} do not meet the conditions. See Notes" 
-        l1, l2 = u1, u2 
+        C = 1-c1+c2
+        a = log(C/c2,2)        
+        if verify: assert np.all(C<=1) and np.all(C>0) and np.all(a>0), f"obtained value of c={C} and a={a} do not meet the conditions: 0<c≤1 and a >0" 
+        l1, l2 = C, a
          
-    elif convert_from == "u2h":
-        #u2q
-        q1 = (c1+c2)**2
-        q2 = c1/(2*(c1+c2)) 
-        #q2h
-        h1 = 1 - q1**0.5 + q2*q1**0.5 
-        h2 = 1 - q1**0.5
-        if verify: assert np.all(0<h1) and np.all(h1<1) and np.all(0<h2) and np.all(h2<=h1), f"obtained values of h1={h1} and h2={h2} do not meet the conditions of [3]. See Notes"
+    elif convert_from == "ca2h":
+        h1 = 1-c1*(1-2**(-c2))
+        h2 = c1*2**(-c2)        
+        if verify: assert np.all(0<h1) and np.all(h1<1) and np.all(0<h2) and np.all(h2<=h1), f"obtained values of h1={h1} and h2={h2} do not meet the conditions of [3]: h1>0,  h2>0,  h2 <= h1, and h1<1"
         l1, l2 = h1, h2
         
+    elif convert_from == "ca2q":
+        h1, h2 = convert_LD_coeffs(c1, c2, "ca2h", verify=verify)
+        q1, q2 = convert_LD_coeffs(h1, h2, "h2q", verify=verify)  
+        if verify: assert np.all(0<q1) and np.all(q1<1) and np.all(0<=q2) and np.all(q2<1), f"obtained values of q1={q1} and q2={q2} do not meet the conditions of [1]: 0< q1<1, 0<=q2<1"         
+        l1, l2 = q1, q2    
+    
+    elif convert_from == "q2ca":     
+        h1, h2 = convert_LD_coeffs(c1, c2, "q2h", verify=verify)        
+        C, a = convert_LD_coeffs(h1, h2, "h2ca", verify=verify)      
+        if verify: assert np.all(C<=1) and np.all(C>0) and np.all(a>0), f"obtained value of c={C} and a={a} do not meet the conditions: 0<c≤1 and a >0" 
+        l1, l2 = C, a
+        
+            
     return l1,l2
     
     
