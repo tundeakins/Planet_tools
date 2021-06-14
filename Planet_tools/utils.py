@@ -297,4 +297,22 @@ def MaxLL_result_CI(chain, weights=None, dims=None, labels=None, stat="max_centr
         
     return np.array(mll)
 
-
+def decontaminate(F,contam_frac):
+    """
+    decontaminate flux F
+    
+    Parameters:
+    -----------
+    
+    F: array-like;
+    	contaminated flux that needs correction
+    
+    contam_frac: float;
+    	fraction of contamination in aperture Fcontam/Ftarget
+    
+    Returns:
+    --------
+    F_corr: array-like;
+    	decontaminated flux
+    """
+    return F*(1+contam_frac) - contam_frac
