@@ -224,8 +224,8 @@ def ingress_duration(P, Rp, a, b=0, e=0, w=90, inc=None, total=True):
     """
     #eqn 43 of Kipping 2010 https://doi.org/10.1111/j.1365-2966.2010.16894.x
         
-    T14 = transit_duration(P, Rp, a, b=0, e=e, w=w, inc=inc, total=True)
-    T23 = transit_duration(P, Rp, a, b=0, e=e, w=w, inc=inc, total=False)
+    T14 = transit_duration(P, Rp, a, b=b, e=e, w=w, inc=inc, total=True)
+    T23 = transit_duration(P, Rp, a, b=b, e=e, w=w, inc=inc, total=False)
     
     return  (T14 - T23)/2.
 
