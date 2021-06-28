@@ -207,7 +207,7 @@ def convert_LD_coeffs(c1, c2, convert_from = "q2u", verify=True):
     [3] https://ui.adsabs.harvard.edu/abs/2019RNAAS...3..117S/abstract
            
     """
-    assert convert_from in ['u2q','q2u','h2ca','ca2h','h2q','q2h','ca2q','q2ca'], "invalid input for convert_from. Valid options are 'u2q','q2u','h2ca','ca2h','h2q','q2h','ca2q','q2ca' "
+    assert convert_from in ['u2q','q2u','h2ca','ca2h','h2q','q2h','ca2q','q2ca', None], "invalid input for convert_from. Valid options are 'u2q','q2u','h2ca','ca2h','h2q','q2h','ca2q','q2ca' "
     
     if convert_from == "u2q":
         q1 = (c1+c2)**2
@@ -257,6 +257,9 @@ def convert_LD_coeffs(c1, c2, convert_from = "q2u", verify=True):
         C, a = convert_LD_coeffs(h1, h2, "h2ca", verify=verify)      
         if verify: assert np.all(C<=1) and np.all(C>0) and np.all(a>0), f"obtained value of c={C} and a={a} do not meet the conditions: 0<c≤1 and a >0" 
         l1, l2 = C, a
+    
+    elif convert_from == None:
+    	l1, l1 = c1, c2
         
             
     return l1,l2
