@@ -299,7 +299,8 @@ def MaxLL_result_CI(chain, weights=None, dims=None, labels=None, stat="max_centr
 
 def decontaminate(F,contam_frac):
     """
-    decontaminate flux F
+    decontaminate flux F following prescription by kipping & Tinetti https://doi.org/10.1111/j.1365-2966.2010.17094.x
+    Fcorr = F*(1+Fcont/F_st)- Fcont/F_st
     
     Parameters:
     -----------
@@ -315,4 +316,5 @@ def decontaminate(F,contam_frac):
     F_corr: array-like;
     	decontaminated flux
     """
-    return F*(1+contam_frac) - contam_frac
+    target_frac =  1-contam_frac
+    return F*(1+contam_frac/target_frac) - contam_frac/target_frac
