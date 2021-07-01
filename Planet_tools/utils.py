@@ -309,7 +309,7 @@ def decontaminate(F,contam_frac):
     	contaminated flux that needs correction
     
     contam_frac: float;
-    	fraction of contamination in aperture Fcontam/Ftarget
+    	fraction of contamination in aperture Fcontam/(Ftarget+Fcontam)
     
     Returns:
     --------

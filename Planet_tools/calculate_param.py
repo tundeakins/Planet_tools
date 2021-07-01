@@ -279,6 +279,36 @@ def phase_fold(time, t0, P):
     return ( (time-t0) % P) / float(P)
     
 
+def msini(K,e,P,Mst, return_unit = "jupiter"):
+	
+    """
+    Calculate the minimum mass of a planet using eqn 1 of torres et al 2008 ( https://iopscience.iop.org/article/10.1086/529429/pdf)
+    Paramters:
+    ----------
+    K : float;
+        radial velocity semi amplitude in m/s
+    
+    e : float;
+        eccentricity
+    
+    P : float;
+        Orbital Period in days
+        
+    Mst : float;
+        Stellar mass in solar masses
+        
+    Returns:
+    --------
+    Mp_sini : float;
+        The minimum mass of the planet in jupiter masses if return_unit is "jupiter" 
+        or the minimum planet-to-star mass ratio if return_unit is "star"
+    """
+    Mj_sini  = 4.919*1e-3 *K * (1-e**2)**0.5 * P**(1/3) * Mst**(2/3)
+    
+    if return_unit == "jupiter": return Mj_sini
+    if return_unit == "star": return Mj_sini*u.M_jup.to(u.M_sun)/Mst
+    
+
 
 #def true_anomaly(t, tp, per, e):
     """
