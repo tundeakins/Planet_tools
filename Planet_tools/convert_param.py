@@ -259,7 +259,7 @@ def convert_LD_coeffs(c1, c2, convert_from = "q2u", verify=True):
         l1, l2 = C, a
     
     elif convert_from == None:
-    	l1, l1 = c1, c2
+    	l1, l2 = c1, c2
         
             
     return l1,l2
