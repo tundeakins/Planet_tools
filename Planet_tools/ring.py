@@ -67,14 +67,14 @@ def R_roche(rho_pl, rho_sat):
     return  2.46*((1.0*rho_pl)/rho_sat)**(1/3.)
     
  
-def max_ring_density(rho_pl, f=1, verbose=True):
+def max_ring_density(rho_pl_inf, f=1, verbose=True):
     """
     Use Roche formular to compute maximum density of ring material given inferred planet density in g/cm3.
     since rings cannot be sustained beyond roche limit, we assume the observed radius is the roche limit of possible ringed planet. 
     
     Parameters:
     ----------
-    rho_pl: ufloat, float, array-like;
+    rho_pl_inf: ufloat, float, array-like;
         Inferred density of the planet given the observed radius and estimated mass. ufloat from uncertainties package allows the uncertainties in planet density to be propagated
         to the resulting ring density 
     
@@ -87,7 +87,7 @@ def max_ring_density(rho_pl, f=1, verbose=True):
     rho_ring: Array-like;
         maximum ring density a planet can have. 
     """    
-    rho_r = rho_pl * (2.46* f**0.5)**3 
+    rho_r = rho_pl_inf * (2.46* f**0.5)**3 
     if verbose: print(f"Any ring around this planet must have density below {rho_r} in order to be within the Roche limit. Check ```T_eq``` of this planet to ensure that ring of such density can exist.")
     return  rho_r
     
@@ -146,7 +146,21 @@ def R_hill(mp, m_st, a_r,rp):
     """
     return ( mp/(3*m_st) )**(1/3.) * a_r/rp
     
-def RL_Rroche(j2,mp_ms,a_r,rp_rj,rho_r):
+    
+def R_hill2(rho_p, P,e=0):
+    """
+    compute hill radius of a planet from its density rho_p in g/cm3 and period in days.
+    
+    Returns
+    --------
+
+    R-hill: array-like;
+        radius of hill sphere in unit of planetary radius
+    """
+    G = 498.23383
+    return (1-e)*(G*rho_p*P**2/(9*np.pi))**(1/3)
+    
+def RL_Rroche(j2,mp_ms,a_r,rp_rj,rho_r,e=0):
     """
     Calculate the ratio of the laplace radius RL to the Roche radius RR to determine the ring plane.
     The ring plane aligns with the equatorial plane of the planet if RL/RR < 1 since the entirety of the ring will be within the laplace radius.
@@ -177,5 +191,5 @@ def RL_Rroche(j2,mp_ms,a_r,rp_rj,rho_r):
     RL/RR : float;
         Ratio of Laplace radius to roche radius
     """
-    return 0.75*(j2/0.01)**(1/5.)*(mp_ms/0.001)**(-2/15.)*(rp_rj)**(2/5.)*(a_r/21.5)**(3/5.)*(rho_r/3)**(1/3.)    
+    return 0.75*(j2/0.01)**(1/5.)*(mp_ms/0.001)**(-2/15.)*(rp_rj)**(2/5.)*(a_r/21.5)**(3/5.)*(1-e)**(3/10)*(rho_r/3)**(1/3.)    
     
