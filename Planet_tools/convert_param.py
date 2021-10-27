@@ -113,7 +113,7 @@ def Tdur_2_aR( rp,b,tdur,P=1):
     aR : scaled semimajor axis
     """
     
-    sin2_tdur_p = (1-cos(2*(tdur*pi/P)))/2
+    sin2_tdur_p = (1-cos(2*(tdur*np.pi/P)))/2
     value = ( (1+rp)**2 - b**2*(1-sin2_tdur_p) ) / sin2_tdur_p
     return value**(0.5)
 
