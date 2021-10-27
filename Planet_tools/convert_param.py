@@ -90,6 +90,32 @@ def impact_parameter(inc, a, e=0, w=90, format='deg'):
 
     ecc_factor=(1-e**2)/(1+e*sin(w))  
     return a*cos(inc)*ecc_factor
+    
+    
+def Tdur_2_aR( rp,b,tdur,P=1):
+    """
+    Convert transit duration to a/R*
+    
+    Parameters:
+    -----------
+    
+    rp : planet radius ratio
+    
+    b : impact parameter
+    
+    tdur : total transit duration in same unit as P
+    
+    P : orbital period. set equal to 1 for phase
+    
+    Returns:
+    --------
+    
+    aR : scaled semimajor axis
+    """
+    
+    sin2_tdur_p = (1-cos(2*(tdur*pi/P)))/2
+    value = ( (1+rp)**2 - b**2*(1-sin2_tdur_p) ) / sin2_tdur_p
+    return value**(0.5)
 
 def inclination(b, a, e=0, w=90):
     """
@@ -115,7 +141,7 @@ def inclination(b, a, e=0, w=90):
     
     """
     ecc_factor=(1-e**2)/(1+e*sin(radians(w)))  
-    inc = degrees(acos( float(b) / (a*ecc_factor)) )
+    inc = degrees(acos( b / (a*ecc_factor)) )
     return inc
     
 def vsini(prot, st_rad):
