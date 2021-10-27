@@ -150,7 +150,7 @@ def transit_duration(P, Rp, a, b=0, e=0, w=90, inc=None, total=True):
 
     Returns
     -------
-    Tdur: duration of transit in hours    
+    Tdur: duration of transit in same unit as P   
     
     """
     #eqn 30 and 31 of Kipping 2010 https://doi.org/10.1111/j.1365-2966.2010.16894.x
@@ -167,7 +167,7 @@ def transit_duration(P, Rp, a, b=0, e=0, w=90, inc=None, total=True):
     
     denom = a*factor*sini
     
-    tdur= (P*24/np.pi) * (factor**2/sqrt(1-e**2)) * (asin ( sqrt((1+Rp)**2 - (a*factor*cosi)**2)/ denom ) )
+    tdur= (P/np.pi) * (factor**2/sqrt(1-e**2)) * (asin ( sqrt((1+Rp)**2 - (a*factor*cosi)**2)/ denom ) )
     
     return  tdur
     
@@ -219,7 +219,7 @@ def ingress_duration(P, Rp, a, b=0, e=0, w=90, inc=None, total=True):
 
     Returns
     -------
-    Tdur: duration of transit in hours    
+    Tdur: duration of transit in same unit as P    
     
     """
     #eqn 43 of Kipping 2010 https://doi.org/10.1111/j.1365-2966.2010.16894.x
