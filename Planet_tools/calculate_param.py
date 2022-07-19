@@ -284,6 +284,20 @@ def phase_fold(time, t0, P):
     
     return ( (time-t0) % P) / float(P)
     
+def A_g(dF, Rp, aR):
+    """
+    Geometric albedo of a planet from occultation depth measurement
+
+    Parameters:
+    -----------
+    dF : occultation depth in ppm
+
+    Rp : planet-to-star radius ratio
+
+    aR : scaled semi-major axis
+
+    """
+    return (aR/Rp)**2 * dF*1e-6
 
 def msini(K,e,P,Mst, return_unit = "jupiter"):
 	
