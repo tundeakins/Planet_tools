@@ -229,9 +229,9 @@ def ingress_duration(P, Rp, a, b=0, e=0, w=90, inc=None, total=True):
     
     return  (T14 - T23)/2.
 
-def T_eq(T_st,a_r):
+def T_eq(T_st,a_r, A_b =0 , f = 1/4):
     """
-    calculate equilibrium temperature of planet in Kelvin
+    calculate equilibrium/dayside temperature  of planet in Kelvin
     
     Parameters
     ----------
@@ -241,6 +241,12 @@ def T_eq(T_st,a_r):
         
     a_r: Array-like;
         Scaled semi-major axis of the planet orbit
+
+    A_b: Array-like;
+        Bond albedo pf the planet. default is zero
+
+    f: Array-like;
+        heat redistribution factor.default is 1/4 for uniform heat distribution and 2/3 for None. 
         
     Returns
     -------
@@ -249,7 +255,7 @@ def T_eq(T_st,a_r):
         Equilibrium temperature of the planet
     """
     print("T_st is {0:.2f}, a_r is {1:.2f}".format(T_st,a_r))
-    return T_st*sqrt(0.5/a_r)
+    return T_st*sqrt(1/a_r)* ((1-A_b)*f)**0.25
 
 
 def phase_fold(time, t0, P):
