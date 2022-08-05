@@ -299,6 +299,34 @@ def A_g(dF, Rp, aR):
     """
     return (aR/Rp)**2 * dF*1e-6
 
+def albedo_temp_relation(Tst,Tpl,wl, L, aR, RpRs):
+    """
+    calculate the albedo of a planet as a function of dayside temperature from eclipse depth measurement 
+    
+    Parameters:
+    -----------
+    Tst: stellar surface temeprature in K
+    Tpl: planet dayside equilibrium temperature in K
+    L : eclipse depth in ppm
+    aR: scaled semi-major axis a/Rs
+    RpRs: planet-to-star radius ratio Rp/Rs
+    
+    Returns:
+    --------
+    Ag : planet albedo
+    """
+    from astropy import units as u
+    from astropy.modeling.models import BlackBody
+#     from astropy.visualization import quantity_support
+
+    bb = BlackBody(temperature=Tst*u.K)
+    wav = wl * u.AA
+    flux_st = bb(wav)
+    bb_p = BlackBody(temperature=Tpl*u.K)
+    flux_p = bb_p(wav)
+    ag = L*1e-6*(aR/RpRs)**2 - flux_p.value/flux_st.value * aR**2
+    return ag
+
 def msini(K,e,P,Mst, return_unit = "jupiter"):
 	
     """

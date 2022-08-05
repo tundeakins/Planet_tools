@@ -290,7 +290,23 @@ def convert_LD_coeffs(c1, c2, convert_from = "q2u", verify=True):
             
     return l1,l2
     
-    
+def convert_heat_redistribution(value, conv = "e2f"):
+    """
+    convert between atmospheric heat redistribution efficiency e and heat redistribution factor f
+
+    Parameters:
+    -------------
+    value (float): value to convert
+    conv (str, optional): _description_. Defaults to "e2f".
+
+    Raises:
+        ValueError: if conv is not either of "e2f" or "f2e"
+    """
+    if conv == "e2f": res = 2/3 - 5/12*value
+    elif conv == "f2e": res = 8/5 -12/5*value
+    else: raise ValueError("conv must be either e2f or f2e")
+    return res
+
 def aR_to_rho_star(P,aR):
     """
     Compute the transit derived stellar density from the planet period and 
