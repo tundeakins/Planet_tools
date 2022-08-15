@@ -318,3 +318,68 @@ def decontaminate(F,contam_frac):
     """
     target_frac =  1-contam_frac
     return F*(1+contam_frac/target_frac) - contam_frac/target_frac
+
+def CONAN_input_from_pycheops(d, prefix=None,outfile="CONAN_data", verbose=False):
+    """
+    create inputfile for CONAN from pycheops data
+
+    Parameters
+    ----------
+    d : pycheops dataset object
+        single visit data
+    prefix : str, optional
+        str to put in front of file name, by default None and d.target is used
+    outfile : str, optional
+        folder to save the txt file, by default "CONAN_data". folder is created if it doesnt exist in working directory.
+    """
+    import os
+    rescale = lambda x: (x - np.min(x))/np.ptp(x) # between 0 and 1 
+    rescale_r = lambda x: (2*x-(x.min()+x.max()))/np.ptp(x)  #between -1 and 1 
+    def resort_roll(x):
+        #make roll-angle continuous
+        x = x.copy()
+        phi = np.sort(x)
+        gap = np.diff(phi)
+        if max(gap)>20:
+            brk_pt = phi[np.argmax(gap)]+0.5*max(gap)
+        else: brk_pt = 360
+#         x = (360 + x - brk_pt)%360
+        x[x > brk_pt] -= 360
+        return x
+
+    
+    if not os.path.exists(outfile): os.mkdir(outfile)
+    
+    t = d.lc["time"]+d.bjd_ref-2457000
+    roll =  resort_roll(d.lc["roll_angle"])
+    
+    lc_ = np.stack((t, d.lc["flux"], d.lc["flux_err"], 
+                d.lc["xoff"],d.lc["yoff"], roll, d.lc["bg"], d.lc["contam"], 
+                d.lc["deltaT"])).T
+    fkey = d.file_key.split("TG")[-1].split("_V")[0]
+    if prefix is None: prefix = d.target
+    fname = outfile+"/"+prefix+"_"+fkey+".txt"
+    np.savetxt(fname, lc_, fmt="%.8f", 
+        header=f'time-2457000 {"flux":10s} {"flux_err":10s} {"x_off":10s} {"y_off":10s} {"roll":10s} {"bg":10s} {"contam":10s} {"deltaT":10s}')
+    if verbose: print(f"saved file as {fname}")  
+
+
+def log_jitter(y, yerr):
+    """
+    estimate jitter in data as sigma = sqrt(std(y)**2 - median(yerr)**2). i.e extra white noise to be added to yerr to explain the observed stdev in y
+
+    Parameters
+    ----------
+    y : array
+        observation y or the residual after model has been subtracted.
+    
+    yerr : array
+        uncertainties on y.
+
+    Returns
+    --------
+    log_sigma : float
+        log of the jitter.
+    """
+
+    return np.log( np.sqrt(np.std(y)**2 -  np.median(yerr)**2 ))

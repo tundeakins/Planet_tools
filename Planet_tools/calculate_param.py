@@ -3,6 +3,7 @@ import astropy.constants as c
 import astropy.units as u
 from uncertainties.umath import  asin, sqrt, log, radians, sin, cos
 from .convert_param import P_to_aR, inclination
+from uncertainties import ufloat
 			
 def planet_prot(f,req,mp,j2):
     """
@@ -61,28 +62,39 @@ def transit_prob(Rp, aR, e=0, w=90):
     return prob
     
     
-def ldtk_ldc(lambda_min,lambda_max,Teff,Teff_unc, logg,logg_unc,z,z_unc):
+def ldtk_ldc(Teff, logg, Z, filter, ld_law="qd", dataset="vis-lowres", nsamp=5000,unc_mult=10,nz=300):
     """
-    Function to estimate quadratic limb darkening coefficients for a given star
+    Function to estimate different limb darkening coefficients for a given star using LDTk
     
     Parameters:
     ----------
-    lambda_min: Start wavelength of the bandpass filter.
-    
-    lambda_max: End  wavelength of the bandpass filter.
+    Teff : tuple
+        Effective temperature of the star.
 
-    Teff: Effective temperature of the star.
+    logg : tuple
+        Surface gravity of the star.
 
-    Teff_unc: Uncertainty in Teff.
+    Z : tuple
+        Metallicity of the star.
 
-    logg: Surface gravity of the star.
+    filter : filter transmission from SVO filter service(http://svo2.cab.inta-csic.es/theory/fps/)
+            should be an ldtk.filters.SVOFilter object or np.array of shape (2, N) such that wl = flt[0] \
+            and transmission= flt[1]
 
-    logg_unc: Uncertainty in logg.
+    ld_law : str
+        ld_law to calculate. must be one of ["ln","qd","tq","p2","p2mp","nl"]
 
-    z: Metallicity of the star.
+    dataset : str
+        one of 'vis', 'vis-lowres', 'visir', and 'visir-lowres'
 
-    z_unc: Uncertainty in z.
-    
+    nsamp : int
+        number of limb darkening profiles to generate
+
+    unc_mult : int
+        uncertainty multiplier. default is 10
+
+    nz : int
+        number of points for resampling from mu to z.  
 
     Returns
     -------
@@ -92,24 +104,34 @@ def ldtk_ldc(lambda_min,lambda_max,Teff,Teff_unc, logg,logg_unc,z,z_unc):
     """
     
     from ldtk import LDPSetCreator, BoxcarFilter
+
+    assert ld_law in ["ln","qd","tq","p2","p2mp","nl"],f'ld_law must be one of ["ln","qd","tq","p2","p2mp","nl"] but {ld_law} given.' 
+    assert dataset in ['vis', 'vis-lowres', 'visir','visir-lowres'],f"dataset must be one of ['vis', 'vis-lowres', 'visir','visir-lowres'] but {dataset} given."
     
     # Define your passbands. Boxcar filters useful in transmission spectroscopy
-    filters = [BoxcarFilter('a', lambda_min, lambda_max)] 
+    # filters = [BoxcarFilter('a', lambda_min, lambda_max)] 
 
-    sc = LDPSetCreator(teff=(Teff,   Teff_unc),    # Define your star, and the code
-                   logg=(logg, logg_unc),    # downloads the uncached stellar
-                      z=(z, z_unc),    # spectra from the Husser et al.
-                     filters=filters)    # FTP server automatically.
+    sc = LDPSetCreator(teff=Teff, logg=logg, z=Z,    # spectra from the Husser et al.
+                        filters=filter, dataset=dataset)             # FTP server automatically.
 
-    ps = sc.create_profiles()                # Create the limb darkening profiles
-    cq,eq = ps.coeffs_qd(do_mc=True)         # Estimate quadratic law coefficients
+    ps = sc.create_profiles(nsamp)                # Create the limb darkening profiles\
+    ps.set_uncertainty_multiplier(unc_mult)
+    ps.resample_linear_z(nz)
 
-    #lnlike = ps.lnlike_qd([[0.45,0.15],      # Calculate the quadratic law log
-#                       [0.35,0.10],      # likelihood for a set of coefficients
-#                       [0.25,0.05]])     # (returns the joint likelihood)
-
-    #lnlike = ps.lnlike_qd([0.25,0.05],flt=0) # Quad. law log L for the first filter
-    return cq, eq
+    #calculate ld profiles
+    if   ld_law == "qd":   c, e = ps.coeffs_qd(do_mc=True, n_mc_samples=100000,mc_burn=1000)         # Estimate quadratic law coefficients
+    elif ld_law == "p2":   c, e = ps.coeffs_p2(do_mc=True, n_mc_samples=100000,mc_burn=1000)
+    elif ld_law == "tq":   c, e = ps.coeffs_tq(do_mc=True, n_mc_samples=100000,mc_burn=1000)
+    elif ld_law == "p2mp": c, e = ps.coeffs_p2mp(do_mc=True, n_mc_samples=100000,mc_burn=1000)
+    elif ld_law == "nl":   c, e = ps.coeffs_nl(do_mc=True, n_mc_samples=100000,mc_burn=1000)
+    elif ld_law == "ln":   
+        c, e = ps.coeffs_ln(do_mc=True, n_mc_samples=100000,mc_burn=1000)
+        return ufloat(c,e)
+    
+    coeffs = []
+    for i in range(len(c[0])):
+        coeffs.append(ufloat(round(c[0][i],4), round(e[0][i],4)) )
+    return coeffs
     
 
 def sigma_CCF(res):
