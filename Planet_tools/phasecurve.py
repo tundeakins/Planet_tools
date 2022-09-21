@@ -337,3 +337,23 @@ def phase_variation(pars, t):
     ellps      =  -A_ell  * np.cos(2*phi) + A_ell
     dopp       =  A_dopp * np.sin(phi) + A_dopp
     return atm_signal, ellps, dopp
+
+
+def TSM(rho_p, Rs, Teq, mj):
+    """
+    Transmission spectroscopy metric according to kempton+2018(https://ui.adsabs.harvard.edu/abs/2018PASP..130k4401K)
+
+    Parameters
+    ----------
+    rho_p : float
+        planet density in units of earth density 
+    Rs : float
+        stellar radius in units of solar radii
+    Teq : float
+        planet equilibrium temperature in K (full heat redistribution, zero albedo)
+    mj : float
+        the apparent magnitude of the host star in the J band
+    """
+
+    TSM = 1/(rho_p/5.51) * Teq/Rs**2 * 10**(-mj/5)
+    return TSM

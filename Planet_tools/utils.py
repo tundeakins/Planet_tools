@@ -2,6 +2,12 @@ from scipy.signal import medfilt
 import numpy as np
 import matplotlib.pyplot as plt
 from types import SimpleNamespace
+from astroquery.mast import Observations
+from astropy.io import fits
+from astropy.table import Table
+from astropy.time import Time
+from pycheops.core import load_config
+import os
 
 def clip_outliers(x, y, yerr = None, clip=5, width=15, verbose=True, return_clipped_indices = False):
 
@@ -383,3 +389,106 @@ def log_jitter(y, yerr):
     """
 
     return np.log( np.sqrt(np.std(y)**2 -  np.median(yerr)**2 ))
+
+
+
+def pipe_data(name, fileid, conta_lc ="U1", smear_lc="U2",overwrite=False):
+    """
+    Parameters:
+    -----------
+    name : str
+        name of the fits file
+        containing the PIPE data
+    fileid : str
+        unique file id for the target visit
+    conta_lc : str
+        replace contamination with data from PIPE reduction. default is "U1"
+    smear_lc : str
+        replace smear with data from PIPE reduction. default is "U2"
+    overwrite : Bool
+        overwrite previous fits file with same name
+-----------
+    return:
+        tgz file in pycheops data folder readable to
+        pycheops
+    """
+    config = load_config()
+    p3 = config['DEFAULT']['data_cache_path']
+
+    # Changing the version of fileid
+    fileid = fileid[:-4] + '0000' 
+    hdul = fits.open(name)
+    hdr = hdul[1].header
+    dta = Table.read(hdul[1])
+    # Masking datasets
+    flg = np.asarray(dta['FLAG'])                 # Flagged data
+    msk = np.where(flg==0)[0]                     # Creating a mask to remove flg>0 values
+    # Extracting data from file
+    mjd1, bjd1 = np.asarray(dta['MJD_TIME'])[msk], np.asarray(dta['BJD_TIME'])[msk]                 # Various time formats stored
+    bjd2 = Time(bjd1, format='jd')                                                                  # Converting to UTC time
+    utc1 = bjd2.to_value('fits')
+    # Storing Data
+    fl, fle = np.asarray(dta['FLUX'])[msk], np.asarray(dta['FLUXERR'])[msk]
+    roll, xc, yc, tft2 = np.asarray(dta['ROLL'])[msk], np.asarray(dta['XC'])[msk],\
+        np.asarray(dta['YC'])[msk], np.asarray(dta['thermFront_2'])[msk]
+    bg = np.asarray(dta['BG'])[msk]
+    conta = np.asarray(dta[conta_lc])[msk] if conta_lc in dta.keys() else np.zeros_like(fl)
+    smear = np.asarray(dta[smear_lc])[msk] if smear_lc in dta.keys() else np.zeros_like(fl)
+    locx, locy = np.ones_like(fl)*np.median(xc), np.ones_like(fl)*np.median(yc)
+    # For relative weights of the first arbitrary PSF principal components
+    # Us_n = np.array([])      # To store the names of U
+    # Us = []                  # To store the values of U
+    # cols = dta.colnames      # Name of all columns
+    # for j in range(len(cols)):
+    #     if cols[j][0] == 'U':
+    #         Us_n = np.hstack((Us_n, cols[j]))
+    # for j in range(len(Us_n)):
+    #     usn = np.asarray(dta[Us_n[j]])[msk]
+    #     Us.append(usn)
+
+    # Making an arrays of zero for other elements
+    status, event, dark, conta_err, smerr =\
+        np.zeros_like(fl), np.zeros_like(fl), np.zeros_like(fl), np.zeros_like(fl), np.zeros_like(fl)
+    # Creating an astropy table for storing the data
+    tab = Table()
+    tab['UTC_TIME'], tab['MJD_TIME'], tab['BJD_TIME'], tab['FLUX'], tab['FLUXERR'], tab['STATUS'],\
+        tab['EVENT'], tab['DARK'], tab['BACKGROUND'], tab['CONTA_LC'], tab['CONTA_LC_ERR'], tab['SMEARING_LC'],\
+        tab['SMEARING_LC_ERR'], tab['ROLL_ANGLE'], tab['LOCATION_X'], tab['LOCATION_Y'], tab['CENTROID_X'], tab['CENTROID_Y'] =\
+        utc1, mjd1, bjd1, fl, fle, status, event, dark, bg, conta, conta_err, smear, smerr, roll, locx, locy, xc, yc
+    # for j in range(len(Us_n)):
+    #     tab[Us_n[j]] = Us[j]
+    # Saving the table first
+    tab.write(fileid + '_PIPE.fits', format='fits')
+    # Making changes to the saved file
+    tb_fits = fits.open(fileid + '_PIPE.fits')
+    tb_fits_hdr = tb_fits[1].header
+    hdr1 = hdr[8:]
+    hdr2 = hdr1[:-47]
+    crds = hdr2.cards
+    for j in range(len(crds)):
+        tb_fits_hdr.append(crds[j])
+    tb_fits_hdr.append(('AP_RADI', 25.0, '(px) Radius of Aperture/NA -- PSF Photometry'))                 # Aperture radius
+    nn1 = tb_fits_hdr['TARGNAME']
+    os.system('rm ' + fileid + '_PIPE.fits')
+    tb_fits.writeto('PIPE_' + fileid[:-6] + '_SCI_COR_Lightcurve-DEFAULT_V0000.fits',overwrite=overwrite)
+    os.system('tar -cvzf PIPE_' + fileid + '.tgz PIPE_' + fileid[:-6] + '_SCI_COR_Lightcurve-DEFAULT_V0000.fits')
+    os.system('mv PIPE_' + fileid + '.tgz ' + p3 + '/PIPE_' + fileid + '.tgz')
+    #os.system('mv PIPE_' + fileid + '.tgz ' + p3 + '/' + fileid + '.tgz')
+    os.system('rm PIPE_' + fileid[:-6] + '_SCI_COR_Lightcurve-DEFAULT_V0000.fits')
+    #tb_fits.writeto(fileid[:-6] + '_SCI_COR_Lightcurve-DEFAULT_V0000.fits')
+    #os.system('tar -cvzf ' + fileid + '.tgz ' + fileid[:-6] + '_SCI_COR_Lightcurve-DEFAULT_V0000.fits')
+    #os.system('mv ' + fileid + '.tgz ' + p3 + '/' + fileid + '.tgz')
+    #os.system('rm ' + fileid[:-6] + '_SCI_COR_Lightcurve-DEFAULT_V0000.fits')
+    print('-----------------------------------------------------------------------------')
+    print('Name of the file\t\t\t\t.tgz file')
+    print('-----------------------------------------------------------------------------')
+    print(nn1 + '\t\t\t\tPIPE_' + fileid + '.tgz')
+    #print(nn1 + '\t\t\t\t' + fileid + '.tgz')
+    # For meta files
+    tab1 = Table()
+    tab1['thermFront_2'] = tft2
+    tab1.write('PIPE_' + fileid + '-meta.fits')
+    os.system('mv PIPE_' + fileid + '-meta.fits ' + p3 + '/PIPE_' + fileid + '-meta.fits')
+    #os.system('mv PIPE_' + fileid + '-meta.fits ' + p3 + '/' + fileid + '-meta.fits')
+    print('meta\t\t\t\t\tPIPE_' + fileid + '-meta.fits')
+    #print('meta\t\t\t\t\t' + fileid + '-meta.fits')
