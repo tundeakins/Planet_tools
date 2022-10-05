@@ -146,6 +146,8 @@ def albedo_temp_relation(Tst,Tpl,flt, L, aR, RpRs, star_spec="bb", planet_spec="
     from astropy import units as u
 
     #bb = lambda T,l: (2*h*c**2/(l*u.nm)**5 / (np.exp(h*c/(l*u.nm*k_B*T*u.K))-1)).to(u.W/u.m**3)
+    assert isinstance(Tst,(float, int, UFloat)), 'Tst must be either float, int or ufloat'
+
     bb  = blackbody
     ip = create_bt_settl_interpolator()
     ip2 = create_husser2013_interpolator()
@@ -155,35 +157,43 @@ def albedo_temp_relation(Tst,Tpl,flt, L, aR, RpRs, star_spec="bb", planet_spec="
     if isinstance(flt, np.ndarray): wl, tr = flt 
     else: wl,tr = np.array(flt.wavelength), flt.transmission
     
+    if isinstance(Tst, UFloat): teff    = norm(Tst.n, Tst.s)
+    
     #star
-    if star_spec == "bb": flux_st = bb(Tst,wl) 
+    if star_spec == "bb": 
+        if isinstance(Tst,UFloat): 
+            fs = np.array([bb(teff.rvs(), wl) for _ in range(1000)] )
+            flux_st = np.array([ufloat(v,e) for v,e in zip(fs.mean(axis=0),fs.std(axis=0))])
+        else: flux_st = bb(Tst,wl) 
     elif star_spec == "BT-Settl": 
-        ts = np.full(wl.size, Tst)
-        flux_st = ip((ts, wl))/np.pi
+        if isinstance(Tst,UFloat): 
+            fs = np.array([ip((teff.rvs(), wl))/np.pi for _ in range(1000)] )
+            flux_st = np.array([ufloat(v,e) for v,e in zip(fs.mean(axis=0),fs.std(axis=0))])
+        else: flux_st = ip((Tst, wl))/np.pi
     elif star_spec == "Husser2013":
-        ts = np.full(wl.size, Tst)
-        flux_st = ip2((ts, wl))/np.pi *1e-7 #(convert from erg/s to W)
+        if isinstance(Tst,UFloat): 
+            fs = np.array([ip2((teff.rvs(), wl))/np.pi*1e-7  for _ in range(1000)] )
+            flux_st = np.array([ufloat(v,e) for v,e in zip(fs.mean(axis=0),fs.std(axis=0))])
+        else: flux_st = ip2((Tst, wl))/np.pi *1e-7 #(convert from erg/s to W)
     else: raise ValueError("star_spec must be one of ['bb','BT-Settl','Husser2013']")
 
 
 
     #planet
     if planet_spec == "bb": flux_p = bb(Tpl,wl)
-    elif planet_spec == "BT-Settl":
-        tp = np.full(wl.size, Tpl)
-        flux_p = ip((tp, wl))/np.pi
-    elif planet_spec == "Husser2013":
-        tp = np.full(wl.size, Tpl)
-        flux_p = ip2((tp, wl))/np.pi *1e-7 #(convert from erg/s to W)
+    elif planet_spec == "BT-Settl": flux_p = ip((Tpl, wl))/np.pi
+    elif planet_spec == "Husser2013": flux_p = ip2((Tpl, wl))/np.pi *1e-7 #(convert from erg/s to W)
     else: raise ValueError("planet_spec must be one of ['bb','BT-Settl','Husser2013']")
         
     if plot_spec:
-        plt.plot(wl, flux_st,"r")
+        if isinstance(Tst,UFloat): plt.errorbar(wl,[f.n for f in flux_st],[f.s for f in flux_st], fmt="r.-",ecolor="gray" )
+        else: plt.plot(wl, flux_st,"r")
         plt.plot(wl, flux_p,"b")
         plt.xlabel("wavelength [A]")
     
     # emission_ratios weighted by the filter transmission
-    em_ratio =  np.average(flux_p/flux_st, weights=tr)
+    # em_ratio =  np.average(flux_p/flux_st, weights=tr)
+    em_ratio = sum(flux_p/flux_st * tr)/sum(tr)
 
     ag = L*1e-6*(aR/RpRs)**2 -  em_ratio * aR**2
     return ag
@@ -249,7 +259,7 @@ def gravity_darkening_coefficient(Teff:tuple, logg:tuple, Z:tuple=None, band="TE
 
 def T_eq(T_st,a_r, A_b =0 , f = 1/4):
     """
-    calculate equilibrium/dayside temperature  of planet in Kelvin
+    calculate equilibrium(f=1/4)/dayside temperature(f~=1/4)  of planet in Kelvin
     
     Parameters
     ----------
@@ -272,8 +282,59 @@ def T_eq(T_st,a_r, A_b =0 , f = 1/4):
     T_eq: Array-like;
         Equilibrium temperature of the planet
     """
-    print("T_st is {0:.2f}, a_r is {1:.2f}".format(T_st,a_r))
+    # print("T_st is {0:.2f}, a_r is {1:.2f}".format(T_st,a_r))
     return T_st*sqrt(1/a_r)* ((1-A_b)*f)**0.25
+
+def T_night(T_st,a_r, A_b =0 , eps = 0):
+    """
+    calculate nightside temperature  of planet in Kelvin (Cowan, N. B., & Agol, E. 2011,ApJ,729, 54)
+    also (wong+2021 https://doi.org/10.3847/1538-3881/ac0c7d)
+    
+    Parameters
+    ----------
+    
+    T_st: Array-like;
+        Effective Temperature of the star
+        
+    a_r: Array-like;
+        Scaled semi-major axis of the planet orbit
+
+    A_b: Array-like;
+        Bond albedo pf the planet. default is zero
+
+    e: Array-like;
+        heat redistribution efficiency.1 uniform heat distribution and 0for None
+        
+    Returns
+    -------
+    
+    T_eq: Array-like;
+        nightside temperature of the planet
+    """
+    # print("T_st is {0:.2f}, a_r is {1:.2f}".format(T_st,a_r))
+    return T_st*sqrt(1/a_r)* ((1-A_b)*eps/4)**0.25
+
+def T_irrad(T_st,a_r):
+    """
+    calculate irradiation temperature  of planet in Kelvin (wong+2021 https://doi.org/10.3847/1538-3881/ac0c7d)
+    
+    Parameters
+    ----------
+    
+    T_st: Array-like;
+        Effective Temperature of the star
+        
+    a_r: Array-like;
+        Scaled semi-major axis of the planet orbit
+    
+    Returns
+    -------
+    T_irr: Array-like;
+        irradiation temperature of the planet
+    """
+    # print("T_st is {0:.2f}, a_r is {1:.2f}".format(T_st,a_r))
+    return T_st*sqrt(1/a_r)
+
 
 def A_g(dF, Rp, aR):
     """
@@ -290,7 +351,46 @@ def A_g(dF, Rp, aR):
     """
     return (aR/Rp)**2 * dF*1e-6
 
-    
+def A_B(Td,Teff,aR,e):
+    """
+    bold albedo of a planet
+
+    Parameters
+    ----------
+    Td : float
+        dayside temperature
+    Teff : float
+        stellar effective temperature
+    aR : flaot
+        scaled semi-major axis
+    e : float
+        heat redistribution efficiency
+
+    Returns
+    -------
+    float
+        bold albedo of the planet
+    """
+    return 1 - (Td/(Teff*(1/aR)**0.5))**4 / (2/3 - 5/12*e)
+
+
+def phase_integral(Ag,Ab):
+    """
+    phase integral
+
+    Parameters
+    ----------
+    Ag : _type_
+        _description_
+    Ab : _type_
+        _description_
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
+    return Ab/Ag
 def convert_heat_redistribution(value, conv = "e2f"):
     """
     convert between atmospheric heat redistribution efficiency e and heat redistribution factor f
@@ -357,3 +457,41 @@ def TSM(rho_p, Rs, Teq, mj):
 
     TSM = 1/(rho_p/5.51) * Teq/Rs**2 * 10**(-mj/5)
     return TSM
+
+def eclipse_depth_predict(RpRs, aR,Ag, Tp, Teff, flt):
+    """
+    calculates expected eclipse depth of a planet given a geometric albedo and dayside temperature Tp.
+    equation 1 of Wong+2021(https://doi.org/10.3847/1538-3881/ac0c7d)
+
+    Parameters
+    ----------
+    RpRs : float
+        planet-to-star radius ratio
+    aR : float
+        scaled semi-major axis
+    Ag : float
+        geometric albedo
+    Tp : float
+        planet dayside temperature
+    Teff : float
+        stellar equilibrium temperature
+    flt : SVOfilter
+        observation passband
+
+    Returns
+    -------
+    D: float;
+        eclipse depth in ppm
+    """
+
+    bb  = blackbody
+    ip = create_bt_settl_interpolator()
+    ip.fill_value = None
+    ip.bounds_error = False
+
+    fp = bb(Tp,np.array(flt.wavelength))
+    fs = ip((Teff,flt.wavelength))/np.pi
+
+    em_ratio = np.average(fp/fs, weights=flt.transmission) #emission ratio
+    D = em_ratio*RpRs**2 + Ag*(RpRs/aR)**2
+    return D*1e6

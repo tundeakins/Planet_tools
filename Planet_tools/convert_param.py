@@ -52,6 +52,65 @@ def AU_to_aR(AU,R):
     return AU*c.au.to(u.km).value / (R*rsun)
 
     
+def prot_to_f(Prot,Req,Mp,J2,units="jupiter"):
+    """
+    convert from planet rotation period to oblateness f
+
+    Parameters
+    ----------
+    Prot : float
+        planet rotation in hours
+    Req : float
+        equatorial radius of planet in jupiter or earth units  (or its spherical radius)
+    Mp : float
+        mass of planet in jupiter or earth units
+    J2 : float
+        gravitational mass moments of the planet. value is 0.014736 for jupiter
+    units : str, optional
+        units of Mp and Req, by default "jupiter"
+
+    Returns
+    -------
+    f : float
+        the oblateness of the planet 
+    """
+    assert units in ["jupiter", "earth"]
+    Prot = Prot*u.h  
+    Req  = Req*u.R_earth  if units=="earth" else u.R_jup
+    Mp   = Mp*u.M_earth   if units=="earth" else u.M_jup
+
+    f = 1.5*J2 +((2*np.pi/Prot)**2/(2*c.G) * Req**3/Mp).decompose()
+    return f
+
+def f_to_prot(f, Req,Mp,J2, units="jupiter"):
+    """
+    convert from oblateness f to planet rotation period
+
+    Parameters
+    ----------
+    f : float
+        oblateness of the planet. e.g 0.098 for saturn
+    Req : float
+        equatorial radius of planet in jupiter or earth units  (or its spherical radius)
+    Mp : float
+        mass of planet in jupiter or earth units
+    J2 : float
+        gravitational mass moments of the planet. value is 0.014736 for jupiter
+    units : str, optional
+        units of Mp and Req, by default "jupiter"
+
+    Returns
+    -------
+    Prot : float
+        the rotation period of the planet  in hours.
+    """
+    assert units in ["jupiter", "earth"]
+
+    Req  = Req*u.R_earth  if units=="earth" else u.R_jup
+    Mp   = Mp*u.M_earth   if units=="earth" else u.M_jup
+
+    prot = 2*np.pi*np.sqrt(Req**3/(c.G*Mp*(2*f-J2)))
+    return prot.to(u.h)
 
 def impact_parameter(inc, a, e=0, w=90, format='deg'):
     """
