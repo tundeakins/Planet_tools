@@ -1,6 +1,7 @@
 import numpy as np
 import astropy.constants as c
 import astropy.units as u
+from astropy.io import fits
 from sklearn.datasets import fetch_kddcup99
 from uncertainties.umath import  asin, sqrt, log, log10,radians, sin, cos
 from uncertainties import ufloat, umath
@@ -495,3 +496,85 @@ def eclipse_depth_predict(RpRs, aR,Ag, Tp, Teff, flt):
     em_ratio = np.average(fp/fs, weights=flt.transmission) #emission ratio
     D = em_ratio*RpRs**2 + Ag*(RpRs/aR)**2
     return D*1e6
+
+
+
+def get_atlas_spectrum(Teff, logg, z, lambda_range=None, plot=False, store_download=True):
+    """
+    get ATLAS theoretical spectra for the given stellar parameters 
+    (https://archive.stsci.edu/hlsps/reference-atlases/cdbs/grid/ck04models/).
+
+
+    Parameters
+    ----------
+    Teff : float
+        effective temperature in Kelvin
+    logg : float
+        surface gravity
+    z : float
+        metallicity [M/H]
+    lambda_range : tuple of len 2, optional
+        min and max wavelength in Angstroms to return, by default None
+    plot : bool, optional
+        whether to plot obtained spectra, by default False
+    store_download : bool, optional
+        whether to keep the downloaded fits file, by default True.
+
+    Returns
+    -------
+
+    df : pandas dataframe
+        dataframe containing with keys 'wavelength(A)' and 'flux' in ers/s/cm2/A
+    """
+    
+
+    if lambda_range: 
+        assert (np.iterable(lambda_range) & (len(lambda_range)==2) & (np.diff(lambda_range)>0) ),"lambda_range must be iterable of size 2 with "
+    
+    z_array    = np.array([-2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 0.2])
+    logg_array = np.arange(0,5.5,0.5)
+    Teff_array = np.append(np.arange(3000, 13250, 250),np.arange(13000,50000,1000))
+    
+    if z not in z_array: 
+        idx = np.argmin( abs(z_array - z))
+        print(f"z={z} is outside computed ATLAS grid, taking closest value of z={z_array[idx]}")
+        z = z_array[idx]
+    if logg not in logg_array:
+        idx = np.argmin( abs(logg_array-logg))
+        print(f"logg={logg} is outside computed ATLAS grid, taking closest value of logg={logg_array[idx]}")
+        logg = logg_array[idx]
+    if Teff not in Teff_array:
+        idx = np.argmin( abs(Teff_array-Teff))
+        print(f"Teff={Teff} is outside computed ATLAS grid, taking closest value of Teff={Teff_array[idx]}")
+        Teff = Teff_array[idx]
+
+
+    s  = "m" if z<0 else "p"
+    z  = float(abs(z))
+    mh = str(z).replace(".","")
+    logg  = float(abs(logg))
+    lg    = str(logg).replace(".","")
+    ttttt = str(int(Teff))
+    
+    http_folder= f"https://archive.stsci.edu/hlsps/reference-atlases/cdbs/grid/ck04models/ck{s}{mh}/"
+    file  =  f"ck{s}{mh}_{ttttt}.fits"
+
+    if not os.path.exists(file):
+        print(f"\nDownloading {http_folder+file} as {file}...")
+        os.system("curl " + http_folder+file + " -o " + file)
+    else: print(f"\n {file} already exists in current directory. Loading the fits file")
+    
+    hdu = fits.open(file)
+    data = hdu[1].data
+    if lambda_range: indx = (data["WAVELENGTH"]>=lambda_range[0]) & ((data["WAVELENGTH"]<=lambda_range[1]))
+    else: indx = [True]*len(data["WAVELENGTH"])
+    
+    if plot:
+        plt.plot(data["WAVELENGTH"][indx], data[f"g{lg}"][indx],label="KURUCZ")
+        plt.xlabel("Wavelength [A]")
+        plt.ylabel("ergs/s/cm2/A")
+        plt.xscale("log");
+    if not store_download: os.system("rm " + file)
+    return pd.DataFrame({"wavelength(A)":data["WAVELENGTH"][indx], "flux":data[f"g{lg}"][indx]})
+
+    

@@ -56,6 +56,7 @@ def clip_outliers(x, y, yerr = None, clip=5, width=15, verbose=True, return_clip
     return x[ok], y[ok], yerr[ok]
 
 
+
 def phase_fold(t, period, t0):
     """
 
@@ -247,12 +248,13 @@ def bin_data(time, flux, err=None, nbins=20, statistic="mean"):
     y_bin, y_binedges, _ = binned_statistic(time, flux, statistic=statistic, bins=nbins)
     bin_width = y_binedges[2] - y_binedges[1]
     t_bin = y_binedges[:-1] + bin_width/2.
-    
+    nans = np.isnan(y_bin)
+
     if err is not None:
         err_bin, _, _= binned_statistic(time, err, statistic = lambda x: 1/np.sqrt(np.sum(1/x**2)), bins=nbins)
-        return t_bin, y_bin, err_bin
+        return t_bin[~nans], y_bin[~nans], err_bin[~nans]
 
-    return t_bin, y_bin
+    return t_bin[~nans], y_bin[~nans]
     
     
 def MaxLL_result_CI(chain, weights=None, dims=None, labels=None, stat="max_central"):
@@ -492,3 +494,4 @@ def pipe_data(name, fileid, conta_lc ="U1", smear_lc="U2",overwrite=False):
     #os.system('mv PIPE_' + fileid + '-meta.fits ' + p3 + '/' + fileid + '-meta.fits')
     print('meta\t\t\t\t\tPIPE_' + fileid + '-meta.fits')
     #print('meta\t\t\t\t\t' + fileid + '-meta.fits')
+

@@ -1,9 +1,12 @@
+from matplotlib.pyplot import fill_between
+import matplotlib.pyplot as plt
 import numpy as np
 import astropy.constants as c
 import astropy.units as u
 from uncertainties.umath import  asin, sqrt, log, radians, sin, cos
 from .convert_param import P_to_aR, inclination
 from uncertainties import ufloat
+from scipy import interpolate
 			
 def planet_prot(f,req,mp,j2):
     """
@@ -62,7 +65,7 @@ def transit_prob(Rp, aR, e=0, w=90):
     return prob
     
     
-def ldtk_ldc(Teff, logg, Z, filter, ld_law="qd", dataset="vis-lowres", nsamp=5000,unc_mult=10,nz=300):
+def ldtk_ldc(Teff, logg, Z, filter, ld_law="qd", dataset="vis-lowres", nsamp=5000,unc_mult=10,nz=300,return_profile=False):
     """
     Function to estimate different limb darkening coefficients for a given star using LDTk
     
@@ -96,10 +99,14 @@ def ldtk_ldc(Teff, logg, Z, filter, ld_law="qd", dataset="vis-lowres", nsamp=500
     nz : int
         number of points for resampling from mu to z.  
 
+    return_profile : bool
+        whether to return ld profile rather than ld coefficients
+
     Returns
     -------
     cq, eq : Each an array giving the 2 quadractic limb darkening parameters and the errors associated with them 
 
+    ps : profile object returned if return_profile = True. access attributes such as: ps._mu, ps._mean, ps._std
     
     """
     
@@ -115,6 +122,8 @@ def ldtk_ldc(Teff, logg, Z, filter, ld_law="qd", dataset="vis-lowres", nsamp=500
                         filters=filter, dataset=dataset)             # FTP server automatically.
 
     ps = sc.create_profiles(nsamp)                # Create the limb darkening profiles\
+    if return_profile:
+        return ps
     ps.set_uncertainty_multiplier(unc_mult)
     ps.resample_linear_z(nz)
 
@@ -414,3 +423,51 @@ def msini(K,e,P,Mst, return_unit = "jupiter"):
 #    return nu
     
 
+def PLATO_Noise_level(Vmag, timescale=60, prompt=False, show_plot=False):
+    """
+    calculate noise level expected from PLATO (using 24 cameras) for stars of different V magnitude.
+    The function performs a linear interpolation of the values in Table 2 of Samadi+2019 (https://doi.org/10.1051/0004-6361/201834822)
+
+    Parameters
+    ----------
+    Vmag : float
+        V magnitude of the star
+
+    timescale : float/int
+        timescale in minutes for which to calculate the noise level.
+        Default is 60 minutes as given in Samadi+2019
+
+    prompt : bool, optional
+        show prompt confirming if to extrapolate outside the Vmag value range (8.1 – 12.9 mag)of Samadi+2019 table
+
+    Returns
+    -------
+    float : 
+        noise level in ppm/timescale
+    """
+    if prompt:
+        extrapolate = 'n'
+        if 8.1 < Vmag > 12.9:
+            extrapolate = input("Vmag value is outside the tabulated range (8.1 to 12.9), do you want to extrapolate? y/n ")
+            assert extrapolate in ["y","n"], f"input must be 'y' or 'n' but {extrapolate} given."
+    else: extrapolate = 'y'
+
+    fill_value = "extrapolate" if extrapolate=="y" else np.nan
+    if 8.1 < Vmag > 12.9: print("... Extrapolating noise level outside Vmag range (8.1 - 12.9) ...")
+
+    V = np.array([8.1,8.5,9.0,9.5,10.0,10.5,11.0,11.5,12.0,12.5,12.9])
+    N_per_h = np.array([10.6, 12.9,16.4,20.8,26.7,34.5,44.8,59.2,79.1,106.8,138.5])
+
+    ip = interpolate.interp1d(V, N_per_h,fill_value=fill_value)
+
+    noise = ip(Vmag)*np.sqrt(60/timescale)
+
+    if show_plot:
+        plt.plot(V, N_per_h*np.sqrt(60/timescale),"bo")
+        v_grid = np.linspace( min([V[0],Vmag]), max([V[-1],Vmag]),50)
+        plt.plot(v_grid, ip(v_grid)*np.sqrt(60/timescale),"r--" )
+        plt.plot(Vmag, noise,"ro")
+        plt.xlabel("V mag", fontsize=14)
+        plt.ylabel("Noise [ppm]", fontsize=14)
+        plt.show()
+    return noise

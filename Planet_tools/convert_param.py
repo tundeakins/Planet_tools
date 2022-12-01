@@ -75,11 +75,12 @@ def prot_to_f(Prot,Req,Mp,J2,units="jupiter"):
         the oblateness of the planet 
     """
     assert units in ["jupiter", "earth"]
-    Prot = Prot*u.h  
-    Req  = Req*u.R_earth  if units=="earth" else u.R_jup
-    Mp   = Mp*u.M_earth   if units=="earth" else u.M_jup
+    Prot = Prot*u.h.to(u.s)  
+    Req  = Req*c.R_earth.value  if units=="earth" else Req*c.R_jup.value
+    Mp   = Mp*c.M_earth.value   if units=="earth" else Mp*c.M_jup.value
+    G    = c.G.value
 
-    f = 1.5*J2 +((2*np.pi/Prot)**2/(2*c.G) * Req**3/Mp).decompose()
+    f = 1.5*J2 +((2*np.pi/Prot)**2/(2*G) * Req**3/Mp)#.decompose()
     return f
 
 def f_to_prot(f, Req,Mp,J2, units="jupiter"):
@@ -106,11 +107,13 @@ def f_to_prot(f, Req,Mp,J2, units="jupiter"):
     """
     assert units in ["jupiter", "earth"]
 
-    Req  = Req*u.R_earth  if units=="earth" else u.R_jup
-    Mp   = Mp*u.M_earth   if units=="earth" else u.M_jup
+    Req  = Req*c.R_earth.value  if units=="earth" else Req*c.R_jup.value
+    Mp   = Mp*c.M_earth.value   if units=="earth" else Mp*c.M_jup.value
+    G    = c.G.value
 
-    prot = 2*np.pi*np.sqrt(Req**3/(c.G*Mp*(2*f-J2)))
-    return prot.to(u.h)
+
+    prot = 2*np.pi*np.sqrt(Req**3/(G*Mp*(2*f-3*J2)))
+    return prot*u.s.to(u.h)
 
 def impact_parameter(inc, a, e=0, w=90, format='deg'):
     """
