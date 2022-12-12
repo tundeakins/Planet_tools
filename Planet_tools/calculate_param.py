@@ -384,8 +384,10 @@ def msini(K,e,P,Mst, return_unit = "jupiter"):
     """
     Mj_sini  = 4.919*1e-3 *K * (1-e**2)**0.5 * P**(1/3) * Mst**(2/3)
     
-    if return_unit == "jupiter": return Mj_sini
-    if return_unit == "star": return Mj_sini*u.M_jup.to(u.M_sun)/Mst
+    if return_unit == "jupiter": 
+        return Mj_sini
+    if return_unit == "star": 
+        return Mj_sini*u.M_jup.to(u.M_sun)/Mst
     
 
 
@@ -471,3 +473,40 @@ def PLATO_Noise_level(Vmag, timescale=60, prompt=False, show_plot=False):
         plt.ylabel("Noise [ppm]", fontsize=14)
         plt.show()
     return noise
+
+
+def Pdot(Mp_Mst,aR,Qst=1e6):
+    """
+    calculate period decay rate for a planet e.g https://iopscience.iop.org/article/10.3847/1538-3881/ab7374/pdf
+
+    Parameters
+    ----------
+
+    Mp_Mst : float
+        Mass ratio
+    aR : float
+        scaled semi-major axis
+    Qst : float
+        reduced tidal quality factor. norminal value 1e6
+    """
+
+    return -27*np.pi/(2*Qst) * Mp_Mst * 1/aR**5
+
+
+def inspiral_timescale(P,Mp_Mst,aR,Qst):
+    """
+    calculate timescale or englufment of a planet due to tides e.g https://iopscience.iop.org/article/10.3847/1538-3881/ab7374/pdf
+
+    Parameters
+    ----------
+    P : float
+        planet period
+    Mp_Mst : float
+        Mass ratio
+    aR : float
+        scaled semi-major axis
+    Qst : float
+        reduced tidal quality factor. norminal value 1e6
+    """
+    pdot = -27*np.pi/(2*Qst) * Mp_Mst * 1/aR**5
+    return P/pdot
