@@ -83,15 +83,16 @@ def phase_fold(t, period, t0):
     return ((t - t0 + 0.5*period)%period - 0.5*period )/period
 
 
-def plot_emcee_chains(sampler, labels=None, thin=1, discard=0, figsize=None, alpha=0.05 ):
+def plot_emcee_chains(sampler, labels=None, dims = None,thin=1, discard=0, figsize=None, alpha=0.05 ):
     """
     Plot chains from emcee sampler run.
     
     Parameters:
     -----------
-    sampler: array-like; shape: (nsteps, nwalkers, ndim)
+    sampler: sampler-object; shape: (nsteps, nwalkers, ndim)
     	Sampler from emcee run
-    
+    dims: array:
+        index of dimensions to plot. max length is ndim
     labels: array/list of len ndim
     	Label for the parameters of the chain
     	
@@ -100,8 +101,10 @@ def plot_emcee_chains(sampler, labels=None, thin=1, discard=0, figsize=None, alp
     fig
     	
     """
+    assert np.iterable(dims) or dims==None, f"dims must be interable and not {type(dims)}"
     samples = sampler.get_chain(thin = thin, discard=discard)
-    ndim, nwalkers = samples.shape[2], samples.shape[1]
+    nwalkers = samples.shape[2]
+    ndim = len(dims) if np.iterable(dims) else samples.shape[2]
     if figsize is None: figsize = (12,7+int(ndim/2))
     fig, axes = plt.subplots(ndim, sharex=True, figsize=figsize)
     
@@ -111,8 +114,8 @@ def plot_emcee_chains(sampler, labels=None, thin=1, discard=0, figsize=None, alp
         axes[0].set_title(f"Thinned by {thin}", fontsize=14)
     else:
         axes[0].set_title(f"Discarded first {discard} steps", fontsize=14)
-    
-    for i in range(ndim):
+    dims = dims if np.iterable(dims) else range(ndim)
+    for i in dims:
         ax = axes[i]
         ax.plot(samples[:,:,i],"k", alpha=alpha)
         ax.set_xlim(0,len(samples))
@@ -351,7 +354,7 @@ def CONAN_input_from_pycheops(d, prefix=None,outfile="CONAN_data", verbose=False
         if max(gap)>20:
             brk_pt = phi[np.argmax(gap)]+0.5*max(gap)
         else: brk_pt = 360
-#         x = (360 + x - brk_pt)%360
+        # x = (360 + x - brk_pt)%360
         x[x > brk_pt] -= 360
         return x
 
@@ -409,8 +412,9 @@ def pipe_data(name, fileid, conta_lc ="U1", smear_lc="U2",overwrite=False):
         replace smear with data from PIPE reduction. default is "U2"
     overwrite : Bool
         overwrite previous fits file with same name
------------
+    
     return:
+    ---------
         tgz file in pycheops data folder readable to
         pycheops
     """
