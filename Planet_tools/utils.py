@@ -218,7 +218,38 @@ def dynesty_results(res, q = 0.5):
 
     return [dyfunc.quantile(samples[:,i], q, weights)[0] for i in range(samples.shape[1])]
     
-  
+def print_dynesty_results(res, labels=None, dims=None, sig=4):
+    """
+    print result from dynesty run
+
+    Parameters
+    ----------
+    res : dynesty result object
+    labels: array/list of size res.samples.shape[1]
+        Label for the parameters of the chain
+    dims: array
+        index of dimensions to print. if None all labels are printed
+    sig : int
+        number of significant digits to orint
+
+    """
+    n = dims if np.iterable(dims) else range(res.samples.shape[1])
+        
+    fff = [dynesty_results(res,q) for q in [0.16,0.5,0.84]]
+    val = fff[1]
+    ll, ul = np.diff(fff, axis=0)
+    
+    from IPython.display import display, Latex
+    for i in n:
+        sig_v = abs(int(f'{val[i]:e}'.split('e')[-1]))
+        vs = f"{sig}f" if sig_v<=sig else "2e"
+        sig_e = abs(int(f'{ll[i]:e}'.split('e')[-1]))
+        es = f"{sig}f" if sig_e<=sig else "2e"
+
+        display(Latex(f"{labels[i]}: ${val[i]:.{vs}}_{{-{ll[i]:.{es}}}}^{{+{ul[i]:.{es}}}}$"))
+        
+
+
 def bin_data(time, flux, err=None, nbins=20, statistic="mean"):
 
     """
@@ -498,4 +529,36 @@ def pipe_data(name, fileid, conta_lc ="U1", smear_lc="U2",overwrite=False):
     #os.system('mv PIPE_' + fileid + '-meta.fits ' + p3 + '/' + fileid + '-meta.fits')
     print('meta\t\t\t\t\tPIPE_' + fileid + '-meta.fits')
     #print('meta\t\t\t\t\t' + fileid + '-meta.fits')
+
+
+def resolution_calculator(input_wavelength):
+    
+    '''
+    This function calculate the resolution of your input spectrum 
+    '''
+    R_grid= (input_wavelength[1:-1]+input_wavelength[0:-2])/ (input_wavelength[1:-1]-input_wavelength[0:-2])/2
+    
+    return np.median(R_grid)
+
+def convolving_spectrum(wave_new, HigherRes_wave, HigherRes_flux,):
+    from astropy.convolution import convolve_fft
+    from astropy.convolution import Gaussian1DKernel
+    '''
+    This function convolves a high-resoltion spectrum to any specified resolution using a Gaussian 1-d kernel. 
+    
+    '''
+    
+    # Measuring spectral Resolution
+    R_LowerRes= resolution_calculator(wave_new)
+    R_HigherRes= resolution_calculator(HigherRes_wave)
+    
+    sigma= R_HigherRes/ R_LowerRes
+    
+    gauss = Gaussian1DKernel(stddev=sigma)
+    f_conv= convolve_fft(HigherRes_flux, gauss)
+    
+    LowerRes_flux= np.interp(wave_new, HigherRes_wave, f_conv)
+    
+    
+    return wave_new, LowerRes_flux
 

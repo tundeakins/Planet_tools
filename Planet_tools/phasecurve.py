@@ -2,7 +2,6 @@ import numpy as np
 import astropy.constants as c
 import astropy.units as u
 from astropy.io import fits
-from sklearn.datasets import fetch_kddcup99
 from uncertainties.umath import  asin, sqrt, log, log10,radians, sin, cos
 from uncertainties import ufloat, umath
 import uncertainties
