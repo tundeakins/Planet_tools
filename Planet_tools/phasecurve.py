@@ -435,7 +435,7 @@ def phase_variation(pars, t):
     
     atm_signal =  (Fp-Fn) * (1- np.cos( phi + delta))/2 + Fn
     ellps      =  -A_ell  * np.cos(2*phi) + A_ell
-    dopp       =  A_dopp * np.sin(phi) + A_dopp
+    dopp       =  A_dopp * np.sin(phi) #+ A_dopp
     return atm_signal, ellps, dopp
 
 
