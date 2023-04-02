@@ -576,4 +576,53 @@ def get_atlas_spectrum(Teff, logg, z, lambda_range=None, plot=False, store_downl
     if not store_download: os.system("rm " + file)
     return pd.DataFrame({"wavelength(A)":data["WAVELENGTH"][indx], "flux":data[f"g{lg}"][indx]})
 
+
+def brightness_temp(RpRs, aR, D, Teff, flt, tmin=500, tmax=4500,Ag =0, st_spec="BT-Settl"):
+    """
+    calculates planet brightness temperature given eclipse depth measurement D in ppm
+
+    Parameters
+    ----------
+    RpRs : float
+        planet-to-star radius ratio
+    aR : float
+        scaled semi-major axis
+    D  : float
+        eclipse depth in ppm
+    Teff : float
+        stellar equilibrium temperature
+    flt : SVOfilter
+        observation passband
+    tmin, tmax : float
+        minimum and maximum planet dayside temperature to use in the fit
+    Ag : float
+        geometric albedo
+    st_spec: string
+        stellar spectrum to use. Either "BT-Settl" or "bb"
+        
+    Returns
+    -------
+    Tbr: float;
+        brightness temperature in kelvin
+    """
+    from scipy.optimize import minimize_scalar
+    bb  = blackbody
+    ip = create_bt_settl_interpolator()
+    ip.fill_value = None
+    ip.bounds_error = False
+
+    if st_spec == "BT-Settl": fs = ip((Teff,flt.wavelength))/np.pi
+    elif st_spec == "bb" :    fs = bb(Teff,np.array(flt.wavelength))
+    else: raise(ValueError("st_spec must be either 'BT-Settl' or 'bb.'"))
+        
+    def minfun(tbr):
+        if tbr < tmin or tbr > tmax:
+            return np.inf
+        fp = bb(tbr,np.array(flt.wavelength))
+        em_ratio = np.average(fp/fs, weights=flt.transmission) #emission ratio
+        Dfit = (em_ratio*RpRs**2 + Ag*(RpRs/aR)**2)  * 1e6
+        return np.fabs(Dfit - D)
     
+    return minimize_scalar(minfun, [tmin, tmax], bounds=(tmin, tmax)).x
+
+  
