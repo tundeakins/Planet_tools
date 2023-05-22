@@ -274,7 +274,7 @@ def T_eq(T_st,a_r, A_b =0 , f = 1/4):
         Bond albedo pf the planet. default is zero
 
     f: Array-like;
-        heat redistribution factor.default is 1/4 for uniform heat distribution and 2/3 for None. Note f = 
+        heat redistribution factor.default is 1/4 for uniform heat distribution and 2/3 for None. Note f = 2/3 - 5/12*eps where eps is the heat redistribution efficiency
         
     Returns
     -------
@@ -626,3 +626,51 @@ def brightness_temp(RpRs, aR, D, Teff, flt, tmin=500, tmax=4500,Ag =0, st_spec="
     return minimize_scalar(minfun, [tmin, tmax], bounds=(tmin, tmax)).x
 
   
+
+def get_new_ATLAS_spectrum(Teff,logg, z, lib="mps1", file_path="/Users/tunde/exotic-ld_data"):
+    
+    assert lib in ["mps1", "mps2","kurucz"],f"mps_set can only be one of 'mps1', 'mps2','kurucz'."
+    DA = locals().copy()
+    _  = DA.pop("lib")
+    _  = DA.pop("file_path")
+    
+    
+    if lib in ["mps1", "mps2"]:
+        data = {"z": np.array(
+                        [-0.1, -0.2, -0.3, -0.4, -0.5, -0.05, -0.6, -0.7, -0.8,
+                         -0.9, -0.15, -0.25, -0.35, -0.45, -0.55, -0.65, -0.75,
+                         -0.85, -0.95, -1.0, -1.1, -1.2, -1.3, -1.4, -1.5, -1.6,
+                         -1.7, -1.8, -1.9, -2.0, -2.1, -2.2, -2.3, -2.4, -2.5,
+                         -3.0, -3.5, -4.0, -4.5, -5.0, 0.0, 0.1, 0.2, 0.3, 0.4,
+                         0.5, 0.05, 0.6, 0.7, 0.8, 0.9, 0.15, 0.25, 0.35, 0.45,
+                         1.0, 1.1, 1.2, 1.3, 1.4, 1.5]),
+            "Teff": np.arange(3500, 9050, 100),
+            "logg":np.array([3.0, 3.5, 4.0, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 5.0])}
+    else:
+        data = {"z": np.array(
+                        [-0.1, -0.2, -0.3, -0.5, -1.0, -1.5, -2.0, -2.5, -3.0,
+                         -3.5, -4.0, -4.5, -5.0, 0.0, 0.1, 0.2, 0.3, 0.5, 1.0]),
+            "Teff": np.array([3500, 3750, 4000, 4250, 4500, 4750, 5000,
+                              5250, 5500, 5750, 6000, 6250, 6500]),
+            "logg":np.array([4.0, 4.5, 5.0])}
+
+
+    # check if input teff,logg,or z input is  a point in the mps grid, if not take closest grid point
+    for par in DA.keys():
+        #first ensure input value is not outside grid range
+        assert  min(data[par]) <= DA[par] <= max(data[par]),f"{par}={DA[par]} is outside the range [{min(data[par])},{max(data[par])}]"
+        
+        if DA[par] not in data[par]:
+            idx = np.argmin( abs(data[par]-DA[par]) )
+            print(f"{par}={DA[par]} is not a point in the {lib}-ATLAS grid, taking closest value of {data[par][idx]}")
+            DA[par] = data[par][idx]
+            
+    file_name = os.path.join(file_path,
+                             lib,f"MH{DA['z']:.1f}",f"teff{DA['Teff']:.0f}",f"logg{DA['logg']:.1f}",
+                            f"{lib}_spectra.dat")
+    print(f"returning spectra for {DA}")
+    
+    mus = np.loadtxt(file_name, skiprows=1, max_rows=1)
+    stellar_data = np.loadtxt(file_name, skiprows=2)
+    wave, spec_mus = stellar_data[:, 0], stellar_data[:, 1:]
+    return wave, mus, spec_mus*1e-8

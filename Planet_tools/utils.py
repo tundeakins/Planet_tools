@@ -562,3 +562,27 @@ def convolving_spectrum(wave_new, HigherRes_wave, HigherRes_flux,):
     
     return wave_new, LowerRes_flux
 
+
+def transit_SNR(D,sigma,T14,T23=None,n=1):
+    """
+    calculate the signal-to-noise ratio of a trapazoidal transit. according to kipping2023(https://arxiv.org/abs/2305.06790)
+
+    Parameters
+    ----------
+    D : float
+        transit depth in ppm
+    sigma : float
+        noise per unit of time in ppm
+    T14 : float
+        total transit duration
+    T23 : float, optional
+        duration of flat bottom transit , by default 0  
+    n : int, optional
+        number of transits, by default 1
+    """
+    noise = sigma/np.sqrt(n)
+    if T23 == None:
+        snr =  D/noise  *  np.sqrt( T14 )
+    else:
+        snr = D/noise  *  np.sqrt( (T14+2*T23)/3 )
+    return snr
