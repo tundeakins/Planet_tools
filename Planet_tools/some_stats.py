@@ -8,6 +8,18 @@ import numpy as np
 import warnings
 from scipy.stats import rv_continuous
 
+
+def BF_from_BIC(del_BIC):
+    """
+    estimate bayes factor from delta BIC
+
+    Parameters
+    ----------
+    del_BIC : float
+        bayesian information criterion
+    """
+    return np.exp(-del_BIC/2)
+
 def bic(log_like, n, k):
 
     """

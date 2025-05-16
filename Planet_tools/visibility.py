@@ -12,50 +12,19 @@ e.g. the observing efficiency of CHEOPS is not estimated and
 the more complex visibility checker should be used to determine
 it.
 
-
-# visibility
-Computes CHEOPS and JWST visibility for any target during the year
-
-Predicts visibility for targets by CHEOPS and JWST
-Accuracy for CHEOPS targets is +/- 1 day
-
-Only the Sun avoidance zone for the respective missions are
-taken into account when evaluating visibility, not the
-instantaneous orbits of the space telescopes. This means that 
-e.g. the observing efficiency of CHEOPS is not estimated and
-the more complex visibility checker should be used to determine
-it.
-
-Example of use:
-
-    import visibility as vi
-    
-    print('Is 55 Cnc visible to JWST on 2022-11-21 ?') 
-    b = vi.jwst_vis('55 Cnc', '2022-11-21') 
-    print(f'Answer is {b}') # True (Yes)
-    
-    print('Is 55 Cnc visible to CHEOPS on 2022-11-21 ?') 
-    b = vi.cheops_vis('55 Cnc', '2022-11-21') 
-    print(f'Answer is {b}') # False (No)
-
-    print('When during the year is WASP-12 visible to both CHEOPS and JWST?') 
-    vi.visibility('WASP-12', telescope='BOTH')
-    # Answer is "WASP-12: 0209-0225, 1031-1116", i.e.
-    # February 9-25 and October 31 to November 16.
-
-    print('When during the year is TOI-500 visible to CHEOPS?') 
-    vi.visibility('TOI-500', telescope='CHEOPS')
-    # Answer is "TOI-500: Not visible" (never)
-
-@author: Alexis Brandeker (alexis@astro.su.se)
+@author: Alexis Brandeker (alexis@astro.su.se) 
+https://github.com/alphapsa/visibility/blob/main/visibility.py
 """
 from astropy.time import Time
 from astropy import units as u
 from astropy.coordinates import SkyCoord, get_sun, get_icrs_coordinates
 
 JWST_min_sep = 85*u.deg     # Minimum angle to sun for JWST target
-JWST_max_sep = 137*u.deg    # Maximum angle to sun for JWST target
-CHEOPS_min_sep = 120*u.deg  # Minimum angle to sun for CHEOPS target
+JWST_max_sep = 135*u.deg    # Maximum angle to sun for JWST target
+# Reference: https://jwst-docs.stsci.edu/methods-and-roadmaps/jwst-moving-target-observations/jwst-moving-target-supporting-technical-information/moving-target-field-of-regard#gsc.tab=0
+HST_min_sep = 50*u.deg      # Minimum angle to sun for HST target
+# Reference: https://asd.gsfc.nasa.gov/archive/sm3b/art/pdf/media-guide/sec6.pdf
+CHEOPS_min_sep = 117*u.deg  # Minimum angle to sun for CHEOPS target
 
 
 def cheops_vis(target_name, date_str):
@@ -96,6 +65,8 @@ def visible_coo(target_coo, date, telescope='CHEOPS'):
         return  ((sep > CHEOPS_min_sep) & 
                  (sep >= JWST_min_sep) &
                  (sep <= JWST_max_sep))
+    if telescope == 'HST':
+        return  sep >= HST_min_sep
     return  sep > CHEOPS_min_sep
 
 
@@ -143,6 +114,35 @@ def visibility(target_name, telescope='CHEOPS'):
     print('{:s}: {:s}'.format(target_name, str_range))
         
     
+def max_solar_angle(target_name):
+    """Given target_name, computes the maximum angle between the target and the
+    Sun. Returns maximum angle in degrees.
+    """
+    target_coo = get_icrs_coordinates(target_name)
+    new_year = Time('2001-01-01')
+    max_sep = -1*u.deg
+
+    for n in range(1,365):
+        date = new_year + n*u.day
+        sun_gcrs = get_sun(date)
+        sun_icrs = SkyCoord(ra=sun_gcrs.ra, dec=sun_gcrs.dec)
+        sep = target_coo.separation(sun_icrs)        
+        if max_sep < sep:
+            max_sep = sep
+    print('{:.2f}'.format(max_sep))
+    return max_sep
+
+
+def solar_angle(target_name, date):
+    """Given target_name and date, computes the angle between the target and the
+    Sun. Returns angle in degrees.
+    """
+    target_coo = get_icrs_coordinates(target_name, cache=True)
+    sun_gcrs = get_sun(Time(date))
+    sun_icrs = SkyCoord(ra=sun_gcrs.ra, dec=sun_gcrs.dec)
+    
+    return target_coo.separation(sun_icrs).to_value(u.deg)
+
 
 if __name__ == '__main__': 
 
@@ -163,5 +163,9 @@ if __name__ == '__main__':
     print('When during the year is TOI-500 visible to CHEOPS?') 
     visibility('TOI-500', telescope='CHEOPS')
     # Answer is "TOI-500: Not visible" (never)
+
+    print('What is the maximum angular distance between beta Pic and the Sun?')
+    max_solar_angle('beta Pic')
+    # Answer is 105.58 deg
 
     

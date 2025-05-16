@@ -12,6 +12,7 @@ import pandas as pd
 import os
 from pytransit.stars import create_bt_settl_interpolator, create_husser2013_interpolator
 import matplotlib.pyplot as plt
+from types import SimpleNamespace
 
 
 def blackbody(Teff, wl):
@@ -77,11 +78,11 @@ def doppler_beaming_amplitude(K,Teff,flt,stellar_lib="Husser2013"):
 
     return alpha * 4* K/c.value *1e6
 
-def ellipsoidal_variation_coefficient(u: float,g: float):
+def ellipsoidal_variation_coefficients(u: float,g: float):
     """
     calculate alpha, the ellisoidal varation coefficient. the value is usually close to unity.
     Use function `gravity_darkening_coefficient()` to obtain `g` for CHEOPS and TESS passband and `ldtk_ldc()` for u.
-    eqn 9 of shporer+19 https://doi.org/10.3847/1538-3881/ab0f96.
+    eqn 12 of Esteves2013 https://doi.org/10.1088/0004-637X/772/1/51
 
     Parameters
     ----------
@@ -92,15 +93,24 @@ def ellipsoidal_variation_coefficient(u: float,g: float):
 
     Return
     ------
-    alpha : float, UFloat
+    alpha : SimpleNamespace
+        alpha1 - float, UFloat: ellipsoidal variation coefficient 1 used in the fractional constants f1 anf f2
+        alpha2 - float, UFloat: ellipsoidal variation coefficient 2 used in the main amplitude Aev  
 
     """
-    return 0.15 *  ((15+u)*(1+g))/(3-u) 
+    alpha2  = 0.15 * ((15+u)*(1+g))/(3-u)  
+    alpha1  = 25/24 * (u/(15+u)) * ((g+2)/(g+1)) 
+    return SimpleNamespace(alpha1=alpha1, alpha2=alpha2)
 
-def ellipsoidal_variation_amplitude( qm:(float,UFloat), aR:(float,UFloat),inc:(float,UFloat), alpha:(float,UFloat)):
+def ellipsoidal_variation_amplitude( qm:     float | UFloat,
+                                     aR:     float | UFloat,
+                                     inc:    float | UFloat, 
+                                     alpha1: float | UFloat,
+                                     alpha2: float | UFloat
+                                     ):
     """
     calculate theoretical ampltiude of ellipsodial variation
-    eqn 8 and 9 of shporer+19 https://doi.org/10.3847/1538-3881/ab0f96.
+    eqn 9 and 11 of Esteves2013 https://doi.org/10.1088/0004-637X/772/1/51
 
     Parameters
     ----------
@@ -110,16 +120,22 @@ def ellipsoidal_variation_amplitude( qm:(float,UFloat), aR:(float,UFloat),inc:(f
         scaled semi-major axis
     inc : float,UFloat
         inclination of the orbit
-    alpha : float,UFloat
-        ellipsoidal variation coefficient
+    alpha1 : float,UFloat
+        ellipsoidal variation coefficient 1 used in the fractional constants f1 and f2
+    alpha2 : float,UFloat
+        ellipsoidal variation coefficient 2 used in the main amplitude Aev
+
 
     Returns
     -------
-    Aev : float, UFloat
-        list containing amplitude of ellipsoidal variation in ppm
+    Amplitudes: SimpleNamespace
+        f1 : float, UFloat. fractional constant f1
+        Aev : float, UFloat. main amplitude of ellipsoidal variation in ppm
     """
-
-    return alpha * qm*sin(inc*np.pi/180)**2 / aR**3 * 1e6
+    sini = sin(inc*np.pi/180)
+    Aev  = alpha2 * qm*sini**2 / aR**3 * 1e6
+    f1   = 3*alpha1/aR * (5*sini**2 - 4)/sini
+    return SimpleNamespace(f1=f1, Aev=Aev)
 
 def albedo_temp_relation(Tst,Tpl,flt, L, aR, RpRs, star_spec="bb", planet_spec="bb", plot_spec=False):
     """

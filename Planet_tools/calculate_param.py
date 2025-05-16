@@ -510,3 +510,22 @@ def inspiral_timescale(P,Mp_Mst,aR,Qst):
     """
     pdot = -27*np.pi/(2*Qst) * Mp_Mst * 1/aR**5
     return P/pdot
+
+
+def flux_ppm_to_magnitudes(ppm):
+    '''This converts flux in parts-per-million to magnitudes.
+
+    Parameters
+    ----------
+    ppm : float or array-like
+        Kepler flux measurement errors or RMS values in parts-per-million.
+
+    Returns
+    -------
+    float or array-like
+        Measurement errors or RMS values expressed in magnitudes.
+
+    '''
+
+    return -2.5*np.log10(1.0 - ppm/1.0e6)
+
