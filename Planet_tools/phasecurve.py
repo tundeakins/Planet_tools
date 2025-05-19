@@ -78,17 +78,20 @@ def doppler_beaming_amplitude(K,Teff,flt,stellar_lib="Husser2013"):
 
     return alpha * 4* K/c.value *1e6
 
-def ellipsoidal_variation_coefficients(u: float,g: float):
+def ellipsoidal_variation_coefficients(u1: float, u2: float, y: float):
     """
     calculate alpha, the ellisoidal varation coefficient. the value is usually close to unity.
     Use function `gravity_darkening_coefficient()` to obtain `g` for CHEOPS and TESS passband and `ldtk_ldc()` for u.
-    eqn 12 of Esteves2013 https://doi.org/10.1088/0004-637X/772/1/51
+    eqn 12 and 13 of Esteves2013 https://doi.org/10.1088/0004-637X/772/1/51. This is expanded for the case of
+    quadratic limb darkening in eqn 9 and 10 of Deline2025 https://arxiv.org/pdf/2505.01544. where alpha_ev=alpha2 and beta_ev=alpha1
 
     Parameters
     ----------
-    u : float,UFloat
+    u1 : float,UFloat
         linear limb darkening coefficient
-    g : float,UFloat
+    u2 : float,UFloat
+        quadratic limb darkening coefficient. can be set to zero if using linear limb darkening law
+    y : float,UFloat
         gravity darkening coefficient
 
     Return
@@ -98,8 +101,8 @@ def ellipsoidal_variation_coefficients(u: float,g: float):
         alpha2 - float, UFloat: ellipsoidal variation coefficient 2 used in the main amplitude Aev  
 
     """
-    alpha2  = 0.15 * ((15+u)*(1+g))/(3-u)  
-    alpha1  = 25/24 * (u/(15+u)) * ((g+2)/(g+1)) 
+    alpha2  = 3/10 * ((15+u1+2*u2)/(6-2*u1-u2))  * (1+y)  
+    alpha1  = 5/168 * ((35*u1+22*u2)/(15+u1+2*u2)) * ((y+2)/(y+1)) 
     return SimpleNamespace(alpha1=alpha1, alpha2=alpha2)
 
 def ellipsoidal_variation_amplitude( qm:     float | UFloat,
@@ -215,7 +218,7 @@ def albedo_temp_relation(Tst,Tpl,flt, L, aR, RpRs, star_spec="bb", planet_spec="
     return ag
 
 
-def gravity_darkening_coefficient(Teff:tuple, logg:tuple, Z:tuple=None, band="TESS"):
+def gravity_darkening_coefficient(Teff:tuple, logg:tuple, Z:tuple=None, band="TESS", beta1_ch=0.3):
     """
     get gravity darkening coefficients for TESS and CHEOPS using ATLAS stellar models
     use tables:
@@ -245,14 +248,16 @@ def gravity_darkening_coefficient(Teff:tuple, logg:tuple, Z:tuple=None, band="TE
     
     if band == "CHEOPS":
         df = pd.read_csv(os.path.dirname(__file__)+'/data/ATLAS_GDC-CHEOPS.dat', delim_whitespace=True, skiprows=1)
-        df = df.iloc[::2]
-        df.columns = ['Z', 'Vel', 'logg', 'logTeff', 'y']
-        denom = 4
+        df1 = df.iloc[::2]
+        df1.columns = ['Z', 'Vel', 'logg', 'logTeff', 'y1']
+        df2 = df.iloc[1::2]
+        df2.columns = ['Z', 'Vel', 'logg', 'logTeff', 'y2']
+
+        df  = pd.merge(df1, df2, on=['Z', 'Vel', 'logg', 'logTeff'])        
 
     elif band == "TESS":
         df = pd.read_html("http://cdsarc.u-strasbg.fr/viz-bin/nph-Cat/html?J/A+A/600/A30/table29.dat.gz")[0]
         df.columns = [ 'Z','Vel','logg', 'logTeff', 'y','Mod']
-        denom=1
         
     mlogg = (df.logg >= (logg[0]-3*logg[1])) & (df.logg <= (logg[0]+3*logg[1]) )
     mteff = (df.logTeff >= (logTeff.n-3*logTeff.s)) & (df.logTeff <= (logTeff.n+3*logTeff.s))
@@ -268,9 +273,23 @@ def gravity_darkening_coefficient(Teff:tuple, logg:tuple, Z:tuple=None, band="TE
     #assign weights based on closest dist and normalize so sum(weights)=1
     res["weights"]=  (1-res["dist"])/sum((1-res["dist"]))
 
-    g_mean = np.sum(res["weights"]*res["y"]) / sum(res["weights"])
-    g_std  = np.std(res["weights"]*res["y"]) / sum(res["weights"])
-    return ufloat(round(g_mean,4), round(g_std,4))/denom
+    if band == "TESS":
+        y_mean = np.sum(res["weights"]*res["y"]) / sum(res["weights"])
+        y_std  = np.std(res["weights"]*res["y"]) / sum(res["weights"])
+        y      = ufloat(round(y_mean,4), round(y_std,4))
+    elif band == "CHEOPS":
+        y1_mean = np.sum(res["weights"]*res["y1"]) / sum(res["weights"])
+        y1_std  = np.std(res["weights"]*res["y1"]) / sum(res["weights"])
+        y1      = ufloat(round(y1_mean,4), round(y1_std,4))
+
+        y2_mean = np.sum(res["weights"]*res["y2"]) / sum(res["weights"])
+        y2_std  = np.std(res["weights"]*res["y2"]) / sum(res["weights"])
+        y2      = ufloat(round(y2_mean,4), round(y2_std,4))
+
+        # y = beta1*y1 + y2
+        y = beta1_ch*y1 + y2
+
+    return y
 
 
 def T_eq(T_st,a_r, A_b =0 , f = 1/4):
