@@ -8,7 +8,7 @@ from .convert_param import P_to_aR, inclination
 from uncertainties import ufloat
 from scipy import interpolate
 			
-def planet_prot(f,req,mp,j2):
+def planet_prot(f,req,mp,j2=0.014736):
     """
 	Function to calculate period of rotation of a planet
 	
@@ -22,11 +22,11 @@ def planet_prot(f,req,mp,j2):
 	mp : float;
 		mass of planet in jupiter masses
 	j2 : float;
-		quadrupole moment of the planet
+		quadrupole moment of the planet. j2=0.014736 for jupiter
 		
     Returns:
     --------
-    prot: rotation peropd of the planet in hours
+    prot: rotation peroid of the planet in hours
 		
     """
 	
@@ -36,7 +36,35 @@ def planet_prot(f,req,mp,j2):
     prot=2*np.pi*sqrt(radius**3 / (c.G*mass*(2*f-3*j2)))
 	
     return prot.to(u.hr).value
+
+def oblateness_from_prot(prot,req,mp,j2=0.014736):
+    """
+    Function to calculate oblateness of a planet given the rotation period
     
+    Parameters
+    -----------
+    
+    prot : float;
+        rotation period of the planet in hours
+    req : float;
+        Equatorial radius of planet in jupiter radii.
+    mp : float;
+        mass of planet in jupiter masses
+    j2 : float;
+        quadrupole moment of the planet. j2=0.014736 for jupiter
+        
+    Returns:
+    --------
+    f: oblateness of the planet
+        
+    """
+    prot_s = prot*3600* u.s
+    radius=req*c.R_jup
+    mass= mp*c.M_jup
+    f = ((radius**3 * 4*np.pi**2) / (c.G*mass*prot_s**2) + 3*j2)/2
+    
+    return f
+
     
 def transit_prob(Rp, aR, e=0, w=90):
     """
@@ -348,7 +376,7 @@ def albedo_temp_relation(Tst,Tpl,wl, L, aR, RpRs):
     """
     from astropy import units as u
     from astropy.modeling.models import BlackBody
-#     from astropy.visualization import quantity_support
+    # from astropy.visualization import quantity_support
 
     bb = BlackBody(temperature=Tst*u.K)
     wav = wl * u.AA
