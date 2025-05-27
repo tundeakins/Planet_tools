@@ -19,6 +19,11 @@ cd Planet_tools
 python setup.py install
 ```
 
+or 
+```bash
+pip install git+https://github.com/tundeakins/Planet_tools.git
+```
+
 The **convert_params** module contains the following functions:
 
  - **P_to_aR** - convert period to scaled semi-major axis.
