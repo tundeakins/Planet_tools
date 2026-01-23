@@ -337,6 +337,124 @@ def gravity_darkening_coefficient(Teff:tuple, logg:tuple, Z:tuple=None, band="TE
     logTeff = log10(ufloat(Teff[0],Teff[1]))
     
     if band == "CHEOPS":
+        df = pd.read_csv(os.path.dirname(__file__)+'/data/ATLAS_GDC-CHEOPS.dat', sep='\s+', skiprows=1)
+        df1 = df.iloc[::2]
+        df1.columns = ['Z', 'Vel', 'logg', 'logTeff', 'y1']
+        df2 = df.iloc[1::2]
+        df2.columns = ['Z', 'Vel', 'logg', 'logTeff', 'y2']
+
+        df  = pd.merge(df1, df2, on=['Z', 'Vel', 'logg', 'logTeff'])  
+        df['y'] = beta1_ch*df['y1'] + df['y2']       
+        df= df[['Z', 'logg', 'logTeff', 'y']]
+
+
+    elif band == "TESS":
+        df = pd.read_html("http://cdsarc.u-strasbg.fr/viz-bin/nph-Cat/html?J/A+A/600/A30/table29.dat.gz")[0]
+        df.columns = [ 'Z','Vel','logg', 'logTeff', 'y','Mod']
+
+    elif band.startswith("JWST/"):
+        file_path= "https://content.cld.iop.org/journals/2515-5172/10/1/16/revision1/rnaasae38dft1_mrt.txt"
+        df = pd.read_csv(file_path, sep=r'\s+', skiprows=24, names=['logg', 'logTeff'] + jwst_filts)
+        df = df[['logg', 'logTeff', band]]
+        df = df.rename(columns={band: 'y'})
+
+    def get_y(logTeff, logg, Z=None):
+        if Z:
+            row = df[ (df['logg'] == logg) & (df['logTeff'] == logTeff) & (df['Z'] == Z)]
+        else:
+            row = df[ (df['logTeff'] == logTeff) & (df['logg'] == logg)]                    
+        if not row.empty:
+            return row['y'].values[0]
+        else:
+            return np.nan	
+
+    #create interpolation function
+    from scipy.interpolate import RegularGridInterpolator
+    logTeff_list = sorted(df['logTeff'].unique())
+    logg_list 	 = sorted(df['logg'].unique())
+    if Z:
+        z_list  = sorted(df['Z'].unique())
+        dff     = np.empty((len(logTeff_list),len(logg_list),len(z_list)))
+    else:
+        dff     = np.empty((len(logTeff_list),len(logg_list)))
+
+    for i,log_T in enumerate(logTeff_list):
+        for j,log_g in enumerate(logg_list):
+            if Z:
+                for k,_z in enumerate(z_list):
+                    y_val = get_y(log_T, log_g, _z)
+                    dff[i,j,k] = y_val
+            else:
+                y_val = get_y(log_T, log_g)
+                dff[i,j] = y_val
+
+    interp_func = RegularGridInterpolator(  points = (logTeff_list, logg_list, z_list) if Z else (logTeff_list, logg_list), 
+                                            values = dff,
+                                            bounds_error=False, method='linear')
+    nsamp   = 100000
+    y_array      = np.empty(nsamp)
+    logg_norm    = norm(*logg).rvs(nsamp)
+    logTeff_norm = norm(logTeff.n, logTeff.s).rvs(nsamp)
+    if Z: z_norm = norm(*Z).rvs(nsamp)
+    
+    for i in range(nsamp):
+        if Z:
+            point       = (logTeff_norm[i], logg_norm[i], z_norm[i])
+        else:
+            point       = (logTeff_norm[i], logg_norm[i])
+
+        y_array[i]      = interp_func(point)
+    
+    y_median = interp_func( (logTeff.n, logg[0], Z[0]) ) if Z else interp_func( (logTeff.n, logg[0]) ) 
+    y = ufloat(y_median, np.nanmax(np.diff(np.nanquantile(y_array, [0.16,0.5,0.84]))) )
+    return y
+
+
+def gravity_darkening_coefficient_old(Teff:tuple, logg:tuple, Z:tuple=None, band="TESS", beta1_ch=0.3):
+    """
+    get gravity darkening coefficients for TESS and CHEOPS using ATLAS stellar models
+    use tables:
+    TESS: claret2017 (https://www.aanda.org/articles/aa/full_html/2017/04/aa29705-16/aa29705-16.html) for TESS 
+    CHEOPS: table 14 of claret2021 (https://iopscience.iop.org/article/10.3847/2515-5172/abdcb3)
+    JWST: table 1 of Claret & Torres 2026 (https://iopscience.iop.org/article/10.3847/2515-5172/ae38df)
+
+
+    Parameters
+    ----------
+    Teff : tuple
+        effective temperature of star given as (mean,std)
+    logg : tuple
+        surface gravity
+    Z : tuple (optional)
+        metallicity. default is None
+    band : str, optional
+        instrument, either 'TESS' or 'CHEOPS', or one of these JWST filters: ['JWST/F210M', 'JWST/F322W2', 'JWST/F444W', 
+        'JWST/SOSS1', 'JWST/SOSS2', 'JWST/F277W', 'JWST/G235H', 'JWST/G235M', 'JWST/G395H', 'JWST/G395M', 'JWST/PRISM']
+    beta1_ch : float, optional
+        beta1 is the gravity-darkening exponent (GDE), a bolometric quantity. only used for CHEOPS 
+        where the gravity darkening coefficient is given by: y = beta1_ch*y1 + y2, by default 0.3
+
+    Returns
+    -------
+    gdc: Ufloat
+        gravity darkening coefficient and uncertainty
+
+    Examples
+    --------
+    >>> from planet_tools.phasecurve import gravity_darkening_coefficient
+    >>> gdc = gravity_darkening_coefficient(Teff=(6000,100), logg=(4.5,0.1), Z=(0.0,0.1), band="TESS")
+    >>> print(gdc)
+    0.431+/-0.013
+
+    """
+    jwst_filts = ['JWST/F210M', 'JWST/F322W2', 'JWST/F444W', 'JWST/SOSS1', 'JWST/SOSS2', 'JWST/F277W', 
+                    'JWST/G235H', 'JWST/G235M', 'JWST/G395H', 'JWST/G395M', 'JWST/PRISM']
+
+    assert band in ["TESS","CHEOPS"]+jwst_filts,f"band must be 'TESS', 'CHEOPS' or one of the JWST filters: {jwst_filts}"
+    
+    logTeff = log10(ufloat(Teff[0],Teff[1]))
+    
+    if band == "CHEOPS":
         df = pd.read_csv(os.path.dirname(__file__)+'/data/ATLAS_GDC-CHEOPS.dat', delim_whitespace=True, skiprows=1)
         df1 = df.iloc[::2]
         df1.columns = ['Z', 'Vel', 'logg', 'logTeff', 'y1']
@@ -372,7 +490,11 @@ def gravity_darkening_coefficient(Teff:tuple, logg:tuple, Z:tuple=None, band="TE
 
     res = df[m]
     #calculate euclidean distance of the samples from the input values (teff, logg,Z)
-    diff = np.array((res["logTeff"],res["logg"],res["Z"])).T - np.array([logTeff.n, logg[0],Z[0]])
+    if Z:
+        diff = np.array((res["logTeff"],res["logg"],res["Z"])).T - np.array([logTeff.n, logg[0],Z[0]])
+    else:
+        diff = np.array((res["logTeff"],res["logg"])).T - np.array([logTeff.n, logg[0]])
+
     res["dist"]=np.sqrt(np.sum(diff**2,axis=1))
     #assign weights based on closest dist and normalize so sum(weights)=1
     res["weights"]=  (1-res["dist"])/sum((1-res["dist"]))
