@@ -79,7 +79,7 @@ def max_ring_density(rho_pl_inf, f=1, verbose=True):
         to the resulting ring density 
     
     f: float;
-    	factor to account for 
+    	factor to account for gaps and rings with optical depth less than unity
 
     Returns
     -------

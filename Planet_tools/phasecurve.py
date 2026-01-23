@@ -13,6 +13,7 @@ import os
 from pytransit.stars import create_bt_settl_interpolator, create_husser2013_interpolator
 import matplotlib.pyplot as plt
 from types import SimpleNamespace
+from scipy.interpolate import RectBivariateSpline
 
 
 def blackbody(Teff, wl):
@@ -58,9 +59,9 @@ def doppler_beaming_amplitude(K,Teff,flt,stellar_lib="Husser2013"):
     from pytransit.utils.phasecurves import doppler_beaming_factor
     from astropy.constants  import c,h,k_B
     assert stellar_lib in ["Husser2013",'BT-Settl','blackbody'],f"stellar lib has to be one of ['Husser2013','BT-Settl','blackbody']"
-    
+
     if stellar_lib == 'blackbody':
-        #eqn(6) of https://iopscience.iop.org/article/10.1088/1538-3873/aa7112/meta
+        # eqn(6) of https://iopscience.iop.org/article/10.1088/1538-3873/aa7112/meta
         wl, tr =  np.array(flt.wavelength)*1e-9, np.array(flt.transmission)
         x = lambda T: (h*c/(wl*u.m*k_B*T*u.K)).value
         alpha_BB = lambda T: np.average( x(T)*np.exp(x(T))/(np.exp(x(T))-1)/4, weights=tr)
@@ -70,15 +71,67 @@ def doppler_beaming_amplitude(K,Teff,flt,stellar_lib="Husser2013"):
             alpha_array = np.array( [alpha_BB(T) for T in norm(Teff.n, Teff.s).rvs(500)])
         else:
             alpha_array = np.array([doppler_beaming_factor(T,flt, stellar_lib)/4 for T in norm(Teff.n, Teff.s).rvs(500)])
-        
+
         alpha  = ufloat(np.mean(alpha_array), np.std(alpha_array))
-    
+
     else: 
         alpha = alpha_BB(Teff) if stellar_lib=="blackbody" else doppler_beaming_factor(Teff,flt, stellar_lib)/4 
 
     return alpha * 4* K/c.value *1e6
 
-def ellipsoidal_variation_coefficients(u1: float, u2: float, y: float):
+
+def ellipsoidal_variation_coefficients(u, y):
+    """
+    calculate alpha, the ellisoidal varation coefficient. the value is usually close to unity.
+    Use function `gravity_darkening_coefficient()` to obtain `g` for CHEOPS and TESS passband and `ldtk_ldc()` for u.
+    eqn 12 and 13 of Esteves2013 https://doi.org/10.1088/0004-637X/772/1/51. This is expanded for the case of
+    quadratic and 4-parameter limb darkening laws (using eqn 9 and 10 of Deline2025 https://arxiv.org/pdf/2505.01544).
+    where alpha_ev=alpha2 and beta_ev=alpha1
+
+    Parameters
+    ----------
+    u: list, array
+        limb darkening coefficients. length 1 for linear limb darkening law and length 2 for quadratic limb darkening law, length 4 for non-linear limb darkening law
+    y : float,UFloat
+        gravity darkening coefficient
+
+    Return
+    ------
+    alpha : SimpleNamespace
+        alpha1 - float, UFloat: ellipsoidal variation coefficient 1 used in the fractional constants f1 and f2
+        alpha2 - float, UFloat: ellipsoidal variation coefficient 2 used in the main amplitude Aev
+
+    """
+    if isinstance(u, (float, UFloat)):
+        u  = [u, 0.0]  # set u2=0 for linear limb darkening law
+    elif hasattr(u, "__len__"):
+        assert len(u) in [1,2,4], "u must be of length 1(for linear), 2(for quadratic) or 4(for non-linear limb darkening law)"
+        if len(u)==1:
+            u = [u[0], 0.0]  # set u2=0 for linear limb darkening law
+
+
+    if len(u)==2: #eqn 2-39 of Kopal 1959 with modification for different quadratic parameterization gotten from Deline 2025 (eqns E.8 and E.9)
+        u1, u2 = u[0], u[1]
+        Xi = np.array( [ 
+                            2/5 * (15 + u1 + 2*u2),
+                            1/7 * (35*u1 + 22*u2),
+                            9/8 * (4*(u1-1)+u2), 
+                        ]) / (6 - 2*u1 - u2)
+                        
+    elif len(u)==4:   #eqn 2-41 of Kopal 1959
+        u1, u2, u3, u4 = u[0], u[1], u[2], u[3]
+        Xi = np.array( [ 
+                            1/7  * (210 + 14*u1 - 18*u3 - 35*u4),
+                            5/42 * (210*u1 + 288*u2 + 315*u3 + 320*u4),
+                            3/56 * ( 420*(u1-1) + 735*u2 + 932*u3 + 1050*u4) 
+                    ]) / (30 - 10*u1 -15*u2 - 18*u3 - 20*u4)
+
+    alpha2 = 3 / 4 * Xi[0] * (1 + y)
+    alpha1 = 1/12 * Xi[1]/Xi[0] * ((y + 2) / (y + 1))
+    return SimpleNamespace(alpha1=alpha1, alpha2=alpha2)
+
+
+def ellipsoidal_variation_coefficients_old(u1: float, u2: float, y: float):
     """
     calculate alpha, the ellisoidal varation coefficient. the value is usually close to unity.
     Use function `gravity_darkening_coefficient()` to obtain `g` for CHEOPS and TESS passband and `ldtk_ldc()` for u.
@@ -139,6 +192,37 @@ def ellipsoidal_variation_amplitude( qm:     float | UFloat,
     Aev  = alpha2 * qm*sini**2 / aR**3 * 1e6
     f1   = 3*alpha1/aR * (5*sini**2 - 4)/sini
     return SimpleNamespace(f1=f1, Aev=Aev)
+
+
+def ellipsoidal_variation_signal(phi, A_ev=0, f1_ev=0, inc_rad=1.571):
+    """
+    Calculate the ellipsoidal variation signal of a planet as a function of phase angle.
+    The equation is given as F = Aev * (1 - cos(2*phi) - f1*cos(phi) - f2*cos(3*phi)).
+    The semi-amplitude of the ellipsoidal variation is A, f1 and f2 are fractional coefficients controlling
+    the fundamental and second harmonics respectively. see eq.8 of Esteves+2013 (https://iopscience.iop.org/article/10.1088/0004-637X/772/1/51)
+
+    Parameters
+    -----------
+    phi : array-like
+        phase angle (2*pi*phase for circular orbit) or true anomaly+omega-pi/2 in radians.
+    A_ev : float
+        semi-amplitude of the ellipsoidal variation signal
+    f1_ev : float
+        fractional coefficient controlling the fundamental harmonic
+    inc_rad : float
+        inclination of the planet orbit in radians. Default is 1.571 (90 degrees)
+
+    Returns
+    --------
+    F_ev : array-like
+        ellipsoidal variation signal as a function of phase
+    """
+
+    f2_ev = 5 / 3 * (f1_ev * np.sin(inc_rad) ** 2) / (5 * np.sin(inc_rad) ** 2 - 4)
+    f0 = (1 - f1_ev - f2_ev)  # normalization factor to ensure stellar flux level is zero at mid occultation
+    F_ev = -A_ev * (np.cos(2 * phi) + f1_ev * np.cos(phi) + f2_ev * np.cos(3 * phi) - f0)
+    return F_ev
+
 
 def albedo_temp_relation(Tst,Tpl,flt, L, aR, RpRs, star_spec="bb", planet_spec="bb", plot_spec=False):
     """
@@ -224,6 +308,7 @@ def gravity_darkening_coefficient(Teff:tuple, logg:tuple, Z:tuple=None, band="TE
     use tables:
     TESS: claret2017 (https://www.aanda.org/articles/aa/full_html/2017/04/aa29705-16/aa29705-16.html) for TESS 
     CHEOPS: table 14 of claret2021 (https://iopscience.iop.org/article/10.3847/2515-5172/abdcb3)
+    JWST: table 1 of Claret & Torres 2026 (https://iopscience.iop.org/article/10.3847/2515-5172/ae38df)
 
 
     Parameters
@@ -235,7 +320,8 @@ def gravity_darkening_coefficient(Teff:tuple, logg:tuple, Z:tuple=None, band="TE
     Z : tuple (optional)
         metallicity. default is None
     band : str, optional
-        instrument, either 'TESS' or 'CHEOPS', by default "TESS"
+        instrument, either 'TESS' or 'CHEOPS', or one of these JWST filters: ['JWST/F210M', 'JWST/F322W2', 'JWST/F444W', 
+        'JWST/SOSS1', 'JWST/SOSS2', 'JWST/F277W', 'JWST/G235H', 'JWST/G235M', 'JWST/G395H', 'JWST/G395M', 'JWST/PRISM']
 
     Returns
     -------
@@ -243,7 +329,11 @@ def gravity_darkening_coefficient(Teff:tuple, logg:tuple, Z:tuple=None, band="TE
         gravity darkening coefficient and uncertainty
 
     """
-    assert band in ["TESS","CHEOPS"],f"band must be 'TESS' or 'CHEOPS'"
+    jwst_filts = ['JWST/F210M', 'JWST/F322W2', 'JWST/F444W', 'JWST/SOSS1', 'JWST/SOSS2', 'JWST/F277W', 
+                    'JWST/G235H', 'JWST/G235M', 'JWST/G395H', 'JWST/G395M', 'JWST/PRISM']
+
+    assert band in ["TESS","CHEOPS"]+jwst_filts,f"band must be 'TESS', 'CHEOPS' or one of the JWST filters: {jwst_filts}"
+    
     logTeff = log10(ufloat(Teff[0],Teff[1]))
     
     if band == "CHEOPS":
@@ -258,6 +348,20 @@ def gravity_darkening_coefficient(Teff:tuple, logg:tuple, Z:tuple=None, band="TE
     elif band == "TESS":
         df = pd.read_html("http://cdsarc.u-strasbg.fr/viz-bin/nph-Cat/html?J/A+A/600/A30/table29.dat.gz")[0]
         df.columns = [ 'Z','Vel','logg', 'logTeff', 'y','Mod']
+
+    elif band.startswith("JWST/"):
+        file_path= "https://content.cld.iop.org/journals/2515-5172/10/1/16/revision1/rnaasae38dft1_mrt.txt"
+        df = pd.read_csv(file_path, sep=r'\s+', skiprows=24, names=['logg', 'logTeff'] + jwst_filts)
+        df = df[['logg', 'logTeff', band]]
+        df = df.rename(columns={band: 'y'})
+
+        spline = RectBivariateSpline(df['logg'].unique(), df['logTeff'].unique(), 
+							        df.pivot(index='logg', columns='logTeff', values='y').values)
+        logg_norm = norm(*logg).rvs(1000000)
+        logTeff_norm = norm(logTeff.n, logTeff.s).rvs(1000000)
+        y_array = spline.ev(logg_norm, logTeff_norm)
+        y = ufloat(np.median(y_array), np.max(np.diff(np.quantile(y_array, [0.16,0.5,0.84]))) )
+        return y
         
     mlogg = (df.logg >= (logg[0]-3*logg[1])) & (df.logg <= (logg[0]+3*logg[1]) )
     mteff = (df.logTeff >= (logTeff.n-3*logTeff.s)) & (df.logTeff <= (logTeff.n+3*logTeff.s))
@@ -273,7 +377,7 @@ def gravity_darkening_coefficient(Teff:tuple, logg:tuple, Z:tuple=None, band="TE
     #assign weights based on closest dist and normalize so sum(weights)=1
     res["weights"]=  (1-res["dist"])/sum((1-res["dist"]))
 
-    if band == "TESS":
+    if band == "TESS" or band.startswith("JWST/"):
         y_mean = np.sum(res["weights"]*res["y"]) / sum(res["weights"])
         y_std  = np.std(res["weights"]*res["y"]) / sum(res["weights"])
         y      = ufloat(round(y_mean,4), round(y_std,4))
@@ -320,34 +424,70 @@ def T_eq(T_st,a_r, A_b =0 , f = 1/4):
     # print("T_st is {0:.2f}, a_r is {1:.2f}".format(T_st,a_r))
     return T_st*sqrt(1/a_r)* ((1-A_b)*f)**0.25
 
-def T_night(T_st,a_r, A_b =0 , eps = 0):
+
+def T_day(T_st, a_r, A_b=0, eps=1, e=0, w=90):
     """
-    calculate nightside temperature  of planet in Kelvin (Cowan, N. B., & Agol, E. 2011,ApJ,729, 54)
-    also (wong+2021 https://doi.org/10.3847/1538-3881/ac0c7d)
-    
+    calculate dayside temperature  of planet in Kelvin (eq 4&5 of Cowan, N. B., & Agol, E. 2011,ApJ,729, 54)
+
     Parameters
     ----------
-    
     T_st: Array-like;
         Effective Temperature of the star
-        
+
     a_r: Array-like;
         Scaled semi-major axis of the planet orbit
 
     A_b: Array-like;
-        Bond albedo pf the planet. default is zero
+        Bond albedo of the planet. default is zero
 
     e: Array-like;
-        heat redistribution efficiency.1 uniform heat distribution and 0for None
-        
+        heat redistribution efficiency. 1 for uniform heat distribution and 0 for none
+
     Returns
     -------
-    
     T_eq: Array-like;
-        nightside temperature of the planet
+        temperature of the planet
     """
     # print("T_st is {0:.2f}, a_r is {1:.2f}".format(T_st,a_r))
-    return T_st*sqrt(1/a_r)* ((1-A_b)*eps/4)**0.25
+    if e != 0:
+        f = 3*np.pi/2 - radians(w)              # true anomaly at occultation
+        r = a_r * (1 - e**2) / (1 + e * cos(f)) # star-planet distance at occultation
+    else:
+        r = a_r
+    return T_st * sqrt(1 / r) * ((1 - A_b)) ** 0.25 * (2 / 3 - 5 / 12 * eps) ** 0.25
+
+
+def T_night(T_st,a_r, A_b =0 , eps = 0, e=0, w=90): 
+    """
+    calculate nightside temperature  of planet in Kelvin (eq 4&5 of Cowan, N. B., & Agol, E. 2011,ApJ,729, 54)
+
+    
+    Parameters
+    ----------
+    T_st: Array-like;
+        Effective Temperature of the star
+
+    a_r: Array-like;
+        Scaled semi-major axis of the planet orbit
+
+    A_b: Array-like;
+        Bond albedo of the planet. default is zero
+
+    eps: Array-like;
+        heat redistribution efficiency. 1 for uniform heat distribution and 0 for none
+
+    Returns
+    -------
+    T_night: Array-like;
+        temperature of the planet
+    """
+    # print("T_st is {0:.2f}, a_r is {1:.2f}".format(T_st,a_r))
+    if e != 0:
+        f = np.pi/2 - radians(w)              # true anomaly at occultation
+        r = a_r * (1 - e**2) / (1 + e * cos(f)) # star-planet distance at occultation
+    else:
+        r = a_r
+    return T_st * sqrt(1 / r) * ((1-A_b))**0.25 * (eps/4)**0.25
 
 def T_irrad(T_st,a_r):
     """
@@ -493,7 +633,7 @@ def TSM(rho_p, Rs, Teq, mj):
     TSM = 1/(rho_p/5.51) * Teq/Rs**2 * 10**(-mj/5)
     return TSM
 
-def eclipse_depth_predict(RpRs, aR,Ag, Tp, Teff, flt):
+def eclipse_depth_predict2(RpRs, aR,Ag, Tp, Teff, flt):
     """
     calculates expected eclipse depth of a planet given a geometric albedo and dayside temperature Tp.
     equation 1 of Wong+2021(https://doi.org/10.3847/1538-3881/ac0c7d)
@@ -530,7 +670,6 @@ def eclipse_depth_predict(RpRs, aR,Ag, Tp, Teff, flt):
     em_ratio = np.average(fp/fs, weights=flt.transmission) #emission ratio
     D = em_ratio*RpRs**2 + Ag*(RpRs/aR)**2
     return D*1e6
-
 
 
 def get_atlas_spectrum(Teff, logg, z, lambda_range=None, plot=False, store_download=True):
@@ -660,7 +799,6 @@ def brightness_temp(RpRs, aR, D, Teff, flt, tmin=500, tmax=4500,Ag =0, st_spec="
     
     return minimize_scalar(minfun, [tmin, tmax], bounds=(tmin, tmax)).x
 
-  
 
 def get_new_ATLAS_spectrum(Teff,logg, z, lib="mps1", file_path="/Users/tunde/exotic-ld_data"):
     
