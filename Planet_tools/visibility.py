@@ -12,8 +12,7 @@ e.g. the observing efficiency of CHEOPS is not estimated and
 the more complex visibility checker should be used to determine
 it.
 
-@author: Alexis Brandeker (alexis@astro.su.se) 
-https://github.com/alphapsa/visibility/blob/main/visibility.py
+@author: Alexis Brandeker (alexis@astro.su.se)
 """
 from astropy.time import Time
 from astropy import units as u
@@ -24,7 +23,8 @@ JWST_max_sep = 135*u.deg    # Maximum angle to sun for JWST target
 # Reference: https://jwst-docs.stsci.edu/methods-and-roadmaps/jwst-moving-target-observations/jwst-moving-target-supporting-technical-information/moving-target-field-of-regard#gsc.tab=0
 HST_min_sep = 50*u.deg      # Minimum angle to sun for HST target
 # Reference: https://asd.gsfc.nasa.gov/archive/sm3b/art/pdf/media-guide/sec6.pdf
-CHEOPS_min_sep = 117*u.deg  # Minimum angle to sun for CHEOPS target
+CHEOPS_min_sep = 115.0*u.deg  # Minimum angle to sun for CHEOPS target, updated 2025-10-21
+waltzer_min_sep = 110.0*u.deg  # Minimum angle to sun for waltZer target, updated 2026-01-27
 
 
 def cheops_vis(target_name, date_str):
@@ -67,10 +67,12 @@ def visible_coo(target_coo, date, telescope='CHEOPS'):
                  (sep <= JWST_max_sep))
     if telescope == 'HST':
         return  sep >= HST_min_sep
+    if telescope == 'waltzer':
+        return  sep >= waltzer_min_sep
     return  sep > CHEOPS_min_sep
 
 
-def visibility(target_name, telescope='CHEOPS'):
+def visibility(target_name, telescope='CHEOPS', return_ranges=False):
     """Prints visibility ranges of target_name through the year.
     telescope can be 'CHEOPS', 'JWST', or 'BOTH'
     Output format is string with "mmdd-MMDD" where mm & MM are month
@@ -103,7 +105,7 @@ def visibility(target_name, telescope='CHEOPS'):
     
     if len(vis_ranges) == 0:
         print('{:s}: Not visible'.format(target_name))
-        return
+        return 0
     
     if vis_ranges[-1][1] is None:
         vis_ranges[-1][1] = last_vis
@@ -111,7 +113,11 @@ def visibility(target_name, telescope='CHEOPS'):
     str_range = vis_ranges[0][0]+'-'+vis_ranges[0][1]
     for n in range(1, len(vis_ranges)):
         str_range += ', '+ vis_ranges[n][0]+'-'+vis_ranges[n][1]
-    print('{:s}: {:s}'.format(target_name, str_range))
+    if return_ranges:
+        return str_range if len(vis_ranges) > 0 else 'Not visible'
+    else:
+        print('{:s}: {:s}'.format(target_name, str_range))
+
         
     
 def max_solar_angle(target_name):
@@ -169,3 +175,5 @@ if __name__ == '__main__':
     # Answer is 105.58 deg
 
     
+
+

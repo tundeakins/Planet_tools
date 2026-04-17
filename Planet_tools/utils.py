@@ -586,3 +586,55 @@ def transit_SNR(D,sigma,T14,T23=None,n=1):
     else:
         snr = D/noise  *  np.sqrt( (T14+2*T23)/3 )
     return snr
+
+
+def get_gaia_id(tic_id):
+    from astroquery.mast import Catalogs
+    if np.iterable(tic_id):
+            tic_id = list(tic_id)
+    else:
+            tic_id = [tic_id]
+    
+    catalog_data = Catalogs.query_criteria(
+                                            catalog="Tic",
+                                            ID=tic_id 
+                                            )
+    results = catalog_data[["ID", "GAIA"]].to_pandas().set_index("ID")
+    #convert all to int
+    results.index  = results.index.astype(int)
+    # results["GAIA"] = results["GAIA"].astype(int)
+    results = results.loc[tic_id]
+    
+    return [int(v) if isinstance(v, str) else v for v in results["GAIA"].values ]
+
+def get_gaia_param(gaia_id, params="ruwe"):
+    """
+    
+    Evans (2018) proposed that systems with large Astrometric Goodness of Fit of the astrometric solution for the source
+    in the Along-Scan direction (GOF_AL > 20) and Astrometric Excess Noise significance (D > 5) are likely to be poorly-resolved binaries. 
+    The Renormalised Unit Weight Error (RUWE) is a more robust indicator of the quality of the astrometric fit, and sources with RUWE > 1.4
+    are plausibly poorly-resolved binaries.
+    """
+    from astroquery.gaia import Gaia
+
+    assert isinstance(params, (str, list)), f"params must be a string or a list and not {type(params)}"
+    if isinstance(params, list):
+        params = ",".join(str(i) for i in params)
+
+    assert isinstance(gaia_id, (int, list)), f"gaia_id must be an int or a list and not {type(gaia_id)}"
+
+    ids = [gaia_id] if isinstance(gaia_id, int) else gaia_id
+    id_list = ",".join(str(i) for i in ids)
+
+    query = f"""
+                SELECT source_id, {params}
+                FROM gaiadr3.gaia_source
+                WHERE source_id in ({id_list})
+            """
+
+    job     = Gaia.launch_job(query)
+    results = job.get_results()
+    results = results.to_pandas().set_index("source_id").loc[ids]
+
+    # print(results)
+    return results

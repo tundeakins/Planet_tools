@@ -417,7 +417,85 @@ def msini(K,e,P,Mst, return_unit = "jupiter"):
     if return_unit == "star": 
         return Mj_sini*u.M_jup.to(u.M_sun)/Mst
     
+def rv_K_to_mass(K, e, P, Mst, inc=90, return_unit="jupiter"):
+    """
+    Convert radial velocity semi-amplitude to planet mass.
 
+    Uses eqn 1 of Torres et al. 2008 (https://iopscience.iop.org/article/10.1086/529429/pdf)
+    divided by sin(inc) to recover the true mass.
+
+    Parameters
+    ----------
+    K : float
+        RV semi-amplitude in m/s.
+    e : float
+        Orbital eccentricity.
+    P : float
+        Orbital period in days.
+    Mst : float
+        Stellar mass in solar masses.
+    inc : float
+        Orbital inclination in degrees. Default 90 deg (edge-on) returns minimum mass (Msini).
+    return_unit : str
+        "jupiter" returns mass in Jupiter masses (default).
+        "earth"   returns mass in Earth masses.
+        "solar"   returns mass in solar masses.
+        "star"    returns the planet-to-star mass ratio.
+
+    Returns
+    -------
+    Mp : float
+        Planet mass in the requested unit.
+
+    Examples
+    --------
+    >>> from uncertainties import ufloat
+    >>> rv_K_to_mass(K=ufloat(12.5,0.1), e=ufloat(0.049,0.002), P=ufloat(4332.6,1), Mst=ufloat(1.0,0.05), inc=ufloat(90,0.002))
+
+    """
+    Mp_sini = 4.919e-3 * K * (1 - e**2)**0.5 * P**(1/3) * Mst**(2/3)  # Jupiter masses
+    Mp = Mp_sini / sin(radians(inc))
+
+    if return_unit == "jupiter":
+        return Mp
+    elif return_unit == "earth":
+        return Mp * (c.M_jup / c.M_earth).decompose().value
+    elif return_unit == "solar":
+        return Mp * u.M_jup.to(u.M_sun)
+    elif return_unit == "star":
+        return Mp * u.M_jup.to(u.M_sun) / Mst
+    else:
+        raise ValueError(f"return_unit must be one of 'jupiter', 'earth', 'solar', 'star', got '{return_unit}'")
+
+
+def msiniP3_fe(K,Mst, return_unit = "star"):
+	
+    """
+    Calculate the minimum mass of a planet using eqn 1 of torres et al 2008 ( https://iopscience.iop.org/article/10.1086/529429/pdf)
+    the mass is in msini*P3/(1-e**2)^0.5
+    Paramters:
+    ----------
+    K : float;
+        radial velocity semi amplitude in m/s
+        
+    Mst : float;
+        Stellar mass in solar masses
+        
+    Returns:
+    --------
+    Mp_sini : float;
+        The minimum mass of the planet in jupiter masses if return_unit is "jupiter" 
+        or the minimum planet-to-star mass ratio if return_unit is "star"
+    """
+    # Mj_sini  = 4.919*1e-3 * K * Mst**(2/3) * (1-e**2)**0.5 * P**(1/3) 
+
+    MjsiniP3_fe  = 4.919*1e-3 * K * Mst**(2/3)
+    
+    if return_unit == "jupiter": 
+        return MjsiniP3_fe
+    if return_unit == "star": 
+        return MjsiniP3_fe*u.M_jup.to(u.M_sun)/Mst
+    
 
 #def true_anomaly(t, tp, per, e):
     """
@@ -538,22 +616,4 @@ def inspiral_timescale(P,Mp_Mst,aR,Qst):
     """
     pdot = -27*np.pi/(2*Qst) * Mp_Mst * 1/aR**5
     return P/pdot
-
-
-def flux_ppm_to_magnitudes(ppm):
-    '''This converts flux in parts-per-million to magnitudes.
-
-    Parameters
-    ----------
-    ppm : float or array-like
-        Kepler flux measurement errors or RMS values in parts-per-million.
-
-    Returns
-    -------
-    float or array-like
-        Measurement errors or RMS values expressed in magnitudes.
-
-    '''
-
-    return -2.5*np.log10(1.0 - ppm/1.0e6)
 
